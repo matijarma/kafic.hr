@@ -56,21 +56,22 @@ export const toast = (msg, type = 'info') => {
     requestAnimationFrame(() => el.classList.add('show'));
     setTimeout(() => {
         el.classList.remove('show');
-        setTimeout(() => el.remove(), 300);
-    }, 1500);
+        setTimeout(() => el.remove(), 200);
+    }, 1100);
 };
 
-export const confirm = (message, title = 'Confirm') => {
+export const confirm = (message, title = null) => {
     return new Promise((resolve) => {
+        const resolvedTitle = title || t('confirm.title');
         const dialog = document.createElement('dialog');
         dialog.className = 'custom-confirm';
         dialog.innerHTML = `
             <div class="confirm-content">
-                <h3 class="confirm-title">${title}</h3>
+                <h3 class="confirm-title">${resolvedTitle}</h3>
                 <p class="confirm-text">${message}</p>
                 <div class="confirm-actions">
-                    <button id="confirm-cancel" class="btn-text">Cancel</button>
-                    <button id="confirm-ok" class="btn-primary danger">Confirm</button>
+                    <button id="confirm-cancel" class="text-btn">${t('actions.cancel')}</button>
+                    <button id="confirm-ok" class="btn-primary danger">${t('actions.confirm')}</button>
                 </div>
             </div>
         `;

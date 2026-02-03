@@ -11,15 +11,15 @@
   "theme_color": "#0b1221",
   "icons": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
+      "src": "/images/kafichr-logo-circle-alpha-256.png",
+      "sizes": "256x256",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/images/kafichr-logo-512.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     }
   ]

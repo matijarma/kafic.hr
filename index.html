@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <title>Kafić.hr</title>
-    <link rel="stylesheet" href="/css/fontawesome/css/all.css">
+    <link rel="stylesheet" href="/css/fontawesome/css/all.min.css">
     <script>
         // Bump this string to bust caches across all assets and the service worker.
-        //window.__APP_VERSION__ = '0.2.32';
+        //window.__APP_VERSION__ = "030226_" + '0.0.2';
         window.__APP_VERSION__ = Math.round(Math.random()*1000000)
         window.__ASSET_SUFFIX__ = `?v=${window.__APP_VERSION__}`;
         document.documentElement.dataset.version = window.__APP_VERSION__;
@@ -47,9 +47,9 @@
 
             addLink('stylesheet', './css/style.css');
             addLink('manifest', './manifest.json');
-            addLink('icon', './icon-192.png', { sizes: '192x192' });
-            addLink('icon', './icon-512.png', { sizes: '512x512' });
-            addLink('apple-touch-icon', './icon-192.png');
+            addLink('icon', './images/kafichr-logo-circle-alpha-256.png', { sizes: '256x256' });
+            addLink('icon', './images/kafichr-logo-512.jpg', { sizes: '512x512' });
+            addLink('apple-touch-icon', './images/kafichr-logo-circle-alpha-256.png');
 
             const importMap = {
                 imports: {
@@ -87,8 +87,8 @@
             <!-- Global Top Bar for Setup -->
             <header class="app-header">
                 <div class="header-left">
-                    <div class="logo-icon">B</div>
-                    <input type="text" id="header-username" class="inline-input" placeholder="Your Name" aria-label="Username" data-i18n="setup.label_name">
+                    <button id="logo-home" class="" aria-label="Close session"><img src="/images/kafichr-logo-circle-alpha-256.png" style="width: 3vh;"></button>
+                    <input type="text" id="header-username" class="editable-label" placeholder="Your Name" aria-label="Username" data-i18n="setup.label_name">
                 </div>
                 <div class="header-right">
                     <button id="btn-toggle-theme" class="icon-btn small" aria-label="Toggle Theme">◐</button>
@@ -99,14 +99,43 @@
             <!-- Slide 1: Welcome -->
             <div id="setup-home" class="setup-slide active">
                 <div class="hero">
-                    <h1 data-i18n="app.tagline">Sync Your Bar</h1>
-                    <p data-i18n="app.subline">Instant order management.</p>
+                    <div style="display: flex;flex-direction: row;align-items: center;gap: 12px;">
+                        <img src="/images/kafichr-logo-alpha-512.png" style="width: 12vw;height: 12vw;">
+                        <div>
+                            <h1 data-i18n="app.tagline">Sync Your Bar</h1>
+                            <p data-i18n="app.subline">Instant order management.</p>
+                        </div>
+                    </div>
                     <div class="meta-row">
-                        <span class="pill ghost" id="version-pill">v0.2.0</span>
                         <span class="pill ghost hidden" id="offline-pill">Offline</span>
                         <button id="btn-install-app" class="pill action hidden" data-i18n="actions.install">Install app</button>
                     </div>
                 </div>
+
+                <details class="welcome-note" id="welcome-note" open>
+                    <summary>
+                        <span class="welcome-title" data-i18n="welcome.title">Quick start</span>
+                        <span class="welcome-toggle" aria-hidden="true"></span>
+                    </summary>
+                    <div class="welcome-grid">
+                        <div class="welcome-step">
+                            <span class="step-icon"><i class="fas fa-play-circle"></i></span>
+                            <span data-i18n="welcome.step1">Host a session to create a 6-letter code.</span>
+                        </div>
+                        <div class="welcome-step">
+                            <span class="step-icon"><i class="fas fa-qrcode"></i></span>
+                            <span data-i18n="welcome.step2">Join from another device or scan the QR.</span>
+                        </div>
+                        <div class="welcome-step">
+                            <span class="step-icon"><i class="fas fa-user"></i></span>
+                            <span data-i18n="welcome.step3">Pick Waiter or Bartender and start serving.</span>
+                        </div>
+                        <div class="welcome-step">
+                            <span class="step-icon"><i class="fas fa-wifi"></i></span>
+                            <span data-i18n="welcome.step4">Tip: Works offline once connected.</span>
+                        </div>
+                    </div>
+                </details>
                 
                 <div class="action-dock">
                     <button id="btn-host" class="big-btn primary" data-i18n="setup.host">
@@ -150,19 +179,18 @@
 
             <!-- Slide 3: Lobby -->
             <div id="setup-lobby" class="setup-slide">
-                <div class="slide-header">
-                    <button id="leave-lobby-btn" class="nav-back-btn" aria-label="Leave">✕</button>
-                    <h2 data-i18n="setup.lobby">Lobby</h2>
-                    <button id="btn-manage" class="icon-btn" style="margin-left:auto">⚙</button>
-                </div>
-
                 <div class="lobby-card">
                     <div class="qr-box">
                         <canvas id="qr-canvas"></canvas>
                     </div>
                     <div class="session-info">
-                        <div class="session-code" id="display-code">------</div>
-                        <button id="btn-copy-link" class="text-btn small" data-i18n="actions.copy_link">Copy Invite Link</button>
+                        <div class="session-code-row">
+                            <div class="session-code" id="display-code">------</div>
+                            <button id="btn-copy-link" class="copy-link-btn" aria-label="Copy invite link">
+                                <span class="icon">⧉</span>
+                                <span class="text" data-i18n="actions.copy_link">Copy Link</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="peers-indicator">
                         <span class="status-dot"></span>
@@ -171,8 +199,7 @@
                 </div>
 
                 <div class="role-selector">
-                    <p class="label" data-i18n="setup.select_role">Select your role</p>
-                    <div class="role-cards">
+                    <div class="role-cards dashboard-actions">
                         <button class="role-card" data-role="waiter">
                             <div class="icon">☕</div>
                             <div class="text" data-i18n="roles.waiter">Waiter</div>
@@ -180,6 +207,10 @@
                         <button class="role-card" data-role="bartender">
                             <div class="icon">🍸</div>
                             <div class="text" data-i18n="roles.bartender">Bartender</div>
+                        </button>
+                        <button id="btn-manage" class="role-card settings-card" aria-label="Settings">
+                            <div class="icon">⚙</div>
+                            <div class="text" data-i18n="settings.title">Settings</div>
                         </button>
                     </div>
                 </div>
@@ -189,12 +220,15 @@
         <!-- VIEW 2: WAITER -->
         <section id="view-waiter" class="view">
             <header class="app-header">
-                <button id="waiter-back-btn" class="icon-btn" aria-label="Back">←</button>
+                <button id="waiter-exit-btn" class="icon-btn" aria-label="Exit">←</button>
                 <div class="header-titles">
                     <div class="breadcrumbs" id="waiter-breadcrumbs">Tables</div>
                 </div>
                 <div class="header-actions">
-                    <div class="connection-pill" id="waiter-net-pill"></div>
+                    <div class="net-indicator" id="waiter-net-pill" aria-live="polite">
+                        <span class="dot"></span>
+                        <span class="label"></span>
+                    </div>
                 </div>
             </header>
 
@@ -206,9 +240,20 @@
             <div id="order-dock" class="order-dock">
                 <div class="dock-handle"></div>
                 <div class="dock-summary">
-                    <span id="order-count-badge" class="badge hidden">0</span>
-                    <span data-i18n="waiter.current_order">Current Order</span>
-                    <button id="btn-clear-order" class="text-btn danger" data-i18n="actions.clear">Clear</button>
+                    <div class="dock-title">
+                        <span id="order-count-badge" class="badge hidden">0</span>
+                        <span data-i18n="waiter.current_order">Current Order</span>
+                    </div>
+                    <div class="dock-tools">
+                        <button id="btn-nav-tables" class="dock-icon-btn">
+                            <i class="fas fa-table"></i>
+                            <span class="visually-hidden" data-i18n="waiter.tables">Tables</span>
+                        </button>
+                        <button id="btn-clear-order" class="dock-icon-btn danger">
+                            <i class="fas fa-trash"></i>
+                            <span class="visually-hidden" data-i18n="actions.clear">Clear</span>
+                        </button>
+                    </div>
                 </div>
                 <div id="order-list" class="order-list-container">
                     <div class="empty-msg" data-i18n="waiter.empty">No items</div>
@@ -282,6 +327,23 @@
 
     <!-- Toast Container -->
     <div id="toast-container"></div>
+
+    <footer class="app-footer" id="app-footer" aria-label="App footer">
+        <div class="footer-text">
+            <span data-i18n="footer.privacy">100% private and open source</span>
+            <span class="dot">•</span>
+            <span data-i18n="footer.credit">Developed by Matija Radeljak</span>
+        </div>
+        <div class="footer-links">
+            <a class="footer-link" href="https://aningfilm.hr" target="_blank" rel="noopener noreferrer" aria-label="AningFilm">
+                <img src="/images/aningfilm.png" alt="AningFilm logo">
+            </a>
+            <a class="footer-link" href="https://github.com/matijarma/kafic.hr" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                <i class="fab fa-github"></i>
+            </a>
+            <span id="version-pill" class="footer-version">v0.2.0</span>
+        </div>
+    </footer>
 
     <script type="module">
         import 'app';

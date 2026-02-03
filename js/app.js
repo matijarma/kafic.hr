@@ -30,6 +30,7 @@ const headerUsername = document.getElementById('header-username');
 const btnToggleTheme = document.getElementById('btn-toggle-theme');
 const btnToggleLang = document.getElementById('btn-toggle-lang');
 const btnResetApp = document.getElementById('btn-reset-app');
+const logoHome = document.getElementById('logo-home');
 
 // Setup Action Buttons
 const btnHost = document.getElementById('btn-host');
@@ -53,10 +54,10 @@ const btnCopyLink = document.getElementById('btn-copy-link');
 const peerCountLabel = document.getElementById('peer-count-label');
 const leaveLobbyBtn = document.getElementById('leave-lobby-btn');
 const btnManage = document.getElementById('btn-manage');
-const roleBtns = document.querySelectorAll('.role-card');
+const roleBtns = document.querySelectorAll('.role-card[data-role]');
 
 // Role Back Buttons
-const waiterBackBtn = document.getElementById('waiter-back-btn');
+const waiterExitBtn = document.getElementById('waiter-exit-btn');
 const bartenderBackBtn = document.getElementById('bartender-back-btn');
 
 // Scanner
@@ -70,6 +71,17 @@ let hasNetwork = false;
 let waiterStarted = false;
 let bartenderStarted = false;
 let deferredInstallPrompt = null;
+
+const clamp = (val, min, max) => Math.min(max, Math.max(min, val));
+const setBodyView = (viewId = 'setup') => {
+    document.body.dataset.view = viewId;
+};
+const syncUsernameWidth = () => {
+    if (!headerUsername) return;
+    const base = headerUsername.value?.trim() || headerUsername.placeholder || '';
+    const size = clamp(base.length + 1, 8, 20);
+    headerUsername.setAttribute('size', size);
+};
 
 function formatJoinCode(val = '') {
     if (!val) return '';
@@ -89,6 +101,7 @@ function formatJoinCode(val = '') {
 bootstrap();
 
 function bootstrap() {
+    setBodyView('setup');
     // 1. I18n
     const savedLang = localStorage.getItem('barlink_lang') || 'hr';
     initI18n(savedLang);
@@ -96,7 +109,17 @@ function bootstrap() {
     if (versionPill) versionPill.textContent = `v${APP_VERSION}`;
     if (offlinePill) offlinePill.textContent = t('alerts.offline');
 
-    // 2. UX (Back button handler)
+    // 2. Welcome note collapse state
+    const welcomeNote = document.getElementById('welcome-note');
+    if (welcomeNote) {
+        const stored = localStorage.getItem('barlink_welcome_open');
+        if (stored === '0') welcomeNote.removeAttribute('open');
+        welcomeNote.addEventListener('toggle', () => {
+            localStorage.setItem('barlink_welcome_open', welcomeNote.open ? '1' : '0');
+        });
+    }
+
+    // 3. UX (Back button handler)
     initUX((historyState) => {
         if (!historyState) {
             // Root
@@ -110,14 +133,15 @@ function bootstrap() {
         }
     });
 
-    // 3. User Name Load
+    // 4. User Name Load
     const savedName = localStorage.getItem('barlink_name');
     if (savedName) {
         headerUsername.value = savedName;
         state.workerName = savedName;
     }
+    syncUsernameWidth();
     
-    // 4. Session Check
+    // 5. Session Check
     const session = loadSession();
     if (session && session.sessionCode) {
         resumeDock.classList.remove('hidden');
@@ -125,7 +149,7 @@ function bootstrap() {
         btnResume.onclick = () => resumeFlow(session);
     }
     
-    // 5. Events
+    // 6. Events
     setupEvents();
     bindConnectivity();
     setupInstallPrompt();
@@ -137,10 +161,14 @@ function bootstrap() {
         returnToLobby();
     });
     
-    // 6. URL Join
+    // 7. URL Join
     const params = new URLSearchParams(window.location.search);
     const joinCode = params.get('join');
     if (joinCode) {
+        params.delete('join');
+        const cleanQuery = params.toString();
+        const cleanUrl = `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${window.location.hash || ''}`;
+        history.replaceState(history.state, '', cleanUrl);
         goToSlide('join');
         joinInput.value = formatJoinCode(joinCode);
         syncJoinControls();
@@ -160,6 +188,7 @@ function setupEvents() {
     headerUsername.addEventListener('input', (e) => {
         localStorage.setItem('barlink_name', e.target.value.trim());
         state.workerName = e.target.value.trim();
+        syncUsernameWidth();
     });
     
     btnToggleTheme.onclick = cycleTheme;
@@ -171,6 +200,19 @@ function setupEvents() {
             window.location.reload();
         }
     };
+
+    if (logoHome) {
+        logoHome.onclick = async () => {
+            if (state.sessionCode) {
+                if (await confirmModal(t('confirm.leave_session'))) {
+                    clearSavedSession();
+                    window.location.reload();
+                }
+            } else {
+                goToSlide('home');
+            }
+        };
+    }
 
     document.querySelectorAll('.nav-back-btn').forEach(b => b.onclick = () => history.back());
     
@@ -193,12 +235,14 @@ function setupEvents() {
     btnCloseScan.onclick = stopScanner;
 
     // Lobby
-    leaveLobbyBtn.onclick = async () => {
-        if (await confirmModal(t('confirm.leave_session'))) {
-            clearSavedSession();
-            window.location.reload();
-        }
-    };
+    if (leaveLobbyBtn) {
+        leaveLobbyBtn.onclick = async () => {
+            if (await confirmModal(t('confirm.leave_session'))) {
+                clearSavedSession();
+                window.location.reload();
+            }
+        };
+    }
     if(btnManage) {
         btnManage.onclick = () => {
              initManager(views.manager);
@@ -222,10 +266,9 @@ function setupEvents() {
     roleBtns.forEach(btn => btn.onclick = () => selectRole(btn.dataset.role));
     
     // Role Back Hooks
+    if (waiterExitBtn) waiterExitBtn.onclick = () => returnToLobby();
     bartenderBackBtn.onclick = () => returnToLobby();
-    // Waiter back logic is complex, delegated to waiter.js via event or direct check
-    // Here we let waiter.js handle the click first. If it bubbles or we intercept:
-    // Actually, let's keep waiterBackBtn logic in waiter.js, but expose a global returnToLobby
+    // Expose global return for waiter navigation
     window.returnToLobby = returnToLobby;
 }
 
@@ -254,6 +297,15 @@ function setLobbyStatus(msg, type = '') {
     }
 }
 
+function setNetIndicator(text, status = '') {
+    const netPill = document.getElementById('waiter-net-pill');
+    if (!netPill) return;
+    const label = netPill.querySelector('.label');
+    if (label) label.textContent = text || '';
+    netPill.classList.toggle('connected', status === 'connected');
+    netPill.classList.toggle('offline', status === 'offline');
+}
+
 function focusJoinInput() {
     setTimeout(() => joinInput?.focus(), 60);
 }
@@ -263,10 +315,10 @@ function bindConnectivity() {
         const online = navigator.onLine;
         offlinePill?.classList.toggle('hidden', online);
         if (!online) setLobbyStatus(t('alerts.offline'), 'error');
-        const netPill = document.getElementById('waiter-net-pill');
-        if (netPill && !online) {
-            netPill.classList.remove('connected');
-            netPill.textContent = t('alerts.offline');
+        if (!online) {
+            setNetIndicator(t('alerts.offline'), 'offline');
+        } else {
+            setNetIndicator(t('setup.waiting_short'), '');
         }
     };
     window.addEventListener('online', () => {
@@ -312,12 +364,14 @@ function setupInstallPrompt() {
 function goToView(viewId, push = true) {
     Object.values(views).forEach(el => el.classList.remove('active'));
     views[viewId].classList.add('active');
+    setBodyView(viewId);
     if (push) history.pushState({ view: viewId }, '');
 }
 
 function goToSlide(slideId, push = true) {
     Object.values(slides).forEach(el => el.classList.remove('active'));
     slides[slideId].classList.add('active');
+    setBodyView('setup');
     if (push) history.pushState({ slide: slideId }, '');
 }
 
@@ -379,6 +433,7 @@ function returnToLobby() {
     // Go to setup/lobby
     Object.values(views).forEach(el => el.classList.remove('active'));
     views.setup.classList.add('active');
+    setBodyView('setup');
     goToSlide('lobby');
 }
 
@@ -396,13 +451,14 @@ function initSessionState(code, isHost) {
         role: null
     };
     headerUsername.value = safeName;
+    syncUsernameWidth();
     syncStateToSession(session);
     persist();
 }
 
 function setupLobbyUI() {
     displayCode.textContent = state.sessionCode;
-    renderQR(qrCanvas, state.sessionCode);
+    renderQR(qrCanvas, state.sessionCode, 156);
     setLobbyStatus(t('setup.no_peers'), 'info');
     updatePeerUI();
 }
@@ -487,11 +543,10 @@ function updatePeerUI() {
     
     setLobbyStatus(peersText, count > 0 ? 'success' : '');
 
-    const netPill = document.getElementById('waiter-net-pill');
-    if (netPill) {
-        netPill.classList.toggle('connected', count > 0);
-        netPill.textContent = count > 0 ? `${t('setup.connected_short')} • ${count}` : t('setup.waiting_short');
-    }
+    setNetIndicator(
+        count > 0 ? `${t('setup.connected_short')} • ${count}` : t('setup.waiting_short'),
+        count > 0 ? 'connected' : ''
+    );
 }
 
 function persist() {
@@ -534,6 +589,7 @@ function cycleLang() {
     if (offlinePill) offlinePill.textContent = t('alerts.offline');
     syncJoinControls();
     updatePeerUI();
+    syncUsernameWidth();
 }
 
 function updateLangBtn(lang) {

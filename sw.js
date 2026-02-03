@@ -21,10 +21,9 @@ const ASSETS = [
   `/js/ux.js${SUFFIX}`,
   `/js/trystero.min.js${SUFFIX}`,
   `/manifest.json${SUFFIX}`,
-  `/icon-192.png${SUFFIX}`,
-  `/icon-512.png${SUFFIX}`,
-  `/icon-192.png`,
-  `/icon-512.png`
+  `/images/kafichr-logo-circle-alpha-256.png${SUFFIX}`,
+  `/images/kafichr-logo-512.jpg${SUFFIX}`,
+  `/images/kafichr-logo-alpha-512.png${SUFFIX}`
 ];
 
 self.addEventListener('install', (event) => {

@@ -9,7 +9,6 @@ import { toast, registerModal, popModal, confirm } from 'ux';
 // DOM Elements
 const grid = document.getElementById('waiter-grid');
 const breadcrumbs = document.getElementById('waiter-breadcrumbs');
-const backBtn = document.getElementById('waiter-back-btn');
 const netPill = document.getElementById('waiter-net-pill');
 
 // Order Dock
@@ -18,6 +17,7 @@ const orderListContainer = document.getElementById('order-list');
 const orderCountBadge = document.getElementById('order-count-badge');
 const sendBtn = document.getElementById('btn-send-order');
 const clearBtn = document.getElementById('btn-clear-order');
+const navTablesBtn = document.getElementById('btn-nav-tables');
 
 // Qty Modal
 const qtyModal = document.getElementById('qty-modal');
@@ -33,12 +33,15 @@ const qtySteps = document.querySelectorAll('.qty-step');
 const qtyPresets = [1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24];
 let pendingItem = null;
 let pendingQty = 1;
+let lastGridCount = 0;
+let gridObserver = null;
+let lastOrderCount = 0;
+let orderObserver = null;
 
 export const initWaiter = () => {
     // Setup event listeners
-    backBtn.onclick = handleBack;
-    clearBtn.onclick = clearOrder;
     sendBtn.onclick = sendOrder;
+    navTablesBtn.onclick = handleTables;
     qtySteps.forEach(btn => btn.onclick = () => stepQty(Number(btn.dataset.step || 0)));
     clearQtyBtn.onclick = () => {
         pendingQty = 1;
@@ -64,6 +67,139 @@ export const initWaiter = () => {
     buildQtyGrid();
     updateQtyDisplay();
     render();
+    observeGrid();
+    observeOrderList();
+    bindClearHold();
+};
+
+const scheduleGridLayout = (count) => {
+    lastGridCount = count;
+    requestAnimationFrame(() => applyGridLayout(count));
+};
+
+const observeGrid = () => {
+    if (!grid || gridObserver) return;
+    if ('ResizeObserver' in window) {
+        gridObserver = new ResizeObserver(() => scheduleGridLayout(lastGridCount));
+        gridObserver.observe(grid);
+    } else {
+        window.addEventListener('resize', () => scheduleGridLayout(lastGridCount));
+    }
+};
+
+const scheduleOrderLayout = (count) => {
+    lastOrderCount = count;
+    requestAnimationFrame(() => applyOrderLayout(count));
+};
+
+const observeOrderList = () => {
+    if (!orderListContainer || orderObserver) return;
+    if ('ResizeObserver' in window) {
+        orderObserver = new ResizeObserver(() => scheduleOrderLayout(lastOrderCount));
+        orderObserver.observe(orderListContainer);
+    } else {
+        window.addEventListener('resize', () => scheduleOrderLayout(lastOrderCount));
+    }
+};
+
+const applyOrderLayout = (count) => {
+    if (!orderListContainer) return;
+    if (count <= 0) {
+        orderListContainer.style.gridTemplateColumns = '';
+        orderListContainer.style.gridAutoRows = '';
+        return;
+    }
+    const rect = orderListContainer.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    const style = getComputedStyle(orderListContainer);
+    const rowGap = parseFloat(style.rowGap) || parseFloat(style.gap) || 0;
+    const colGap = parseFloat(style.columnGap) || parseFloat(style.gap) || 0;
+    const paddingX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+    const paddingY = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+    const availableWidth = rect.width - paddingX;
+    const availableHeight = rect.height - paddingY;
+
+    let best = { cols: 1, rows: count, score: 0, cellHeight: 0 };
+    for (let cols = 1; cols <= count; cols++) {
+        const rows = Math.ceil(count / cols);
+        const usableW = availableWidth - colGap * (cols - 1);
+        const usableH = availableHeight - rowGap * (rows - 1);
+        if (usableW <= 0 || usableH <= 0) continue;
+        const cellW = usableW / cols;
+        const cellH = usableH / rows;
+        const score = Math.min(cellW, cellH);
+        if (score > best.score || (score === best.score && rows < best.rows)) {
+            best = { cols, rows, score, cellHeight: cellH };
+        }
+    }
+
+    orderListContainer.style.gridTemplateColumns = `repeat(${best.cols}, minmax(0, 1fr))`;
+    orderListContainer.style.gridAutoRows = `${Math.floor(best.cellHeight)}px`;
+};
+
+const bindClearHold = () => {
+    if (!clearBtn) return;
+    let holdTimer = null;
+    let holdTriggered = false;
+    const holdMs = 700;
+
+    const startHold = () => {
+        holdTriggered = false;
+        holdTimer = setTimeout(() => {
+            holdTriggered = true;
+            if (navigator.vibrate) navigator.vibrate(20);
+            if (window.returnToLobby) window.returnToLobby();
+        }, holdMs);
+    };
+    const cancelHold = () => {
+        if (holdTimer) clearTimeout(holdTimer);
+        holdTimer = null;
+    };
+
+    clearBtn.addEventListener('pointerdown', startHold);
+    clearBtn.addEventListener('pointerup', cancelHold);
+    clearBtn.addEventListener('pointerleave', cancelHold);
+    clearBtn.addEventListener('pointercancel', cancelHold);
+
+    clearBtn.addEventListener('click', async (e) => {
+        if (holdTriggered) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return;
+        }
+        await clearOrder();
+    });
+};
+
+const applyGridLayout = (count) => {
+    if (!grid || count <= 0) return;
+    const rect = grid.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    const style = getComputedStyle(grid);
+    const rowGap = parseFloat(style.rowGap) || parseFloat(style.gap) || 0;
+    const colGap = parseFloat(style.columnGap) || parseFloat(style.gap) || 0;
+    const paddingX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+    const paddingY = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+    const availableWidth = rect.width - paddingX;
+    const availableHeight = rect.height - paddingY;
+
+    let best = { cols: 1, rows: count, size: 0 };
+    for (let cols = 1; cols <= count; cols++) {
+        const rows = Math.ceil(count / cols);
+        const usableW = availableWidth - colGap * (cols - 1);
+        const usableH = availableHeight - rowGap * (rows - 1);
+        if (usableW <= 0 || usableH <= 0) continue;
+        const size = Math.floor(Math.min(usableW / cols, usableH / rows));
+        if (size > best.size || (size === best.size && rows < best.rows)) {
+            best = { cols, rows, size };
+        }
+    }
+
+    if (best.size <= 0) return;
+    grid.style.gridTemplateColumns = `repeat(${best.cols}, ${best.size}px)`;
+    grid.style.gridAutoRows = `${best.size}px`;
 };
 
 const buildQtyGrid = () => {
@@ -90,8 +226,19 @@ const updateQtyDisplay = () => {
 const render = () => {
     // Status
     if (netPill) {
-        netPill.classList.toggle('connected', Object.keys(state.peers).length > 0);
-        if (!netPill.textContent) netPill.textContent = state.sessionCode || t('setup.waiting_short');
+        const count = Object.keys(state.peers).length;
+        const label = netPill.querySelector('.label');
+        if (label) {
+            label.textContent = navigator.onLine
+                ? (count > 0 ? `${t('setup.connected_short')} • ${count}` : t('setup.waiting_short'))
+                : t('alerts.offline');
+        }
+        netPill.classList.toggle('connected', count > 0);
+        netPill.classList.toggle('offline', !navigator.onLine);
+    }
+
+    if (navTablesBtn) {
+        navTablesBtn.disabled = !state.currentTable;
     }
 
     // Grid Content
@@ -111,17 +258,7 @@ const renderTables = () => {
     breadcrumbs.textContent = t('waiter.select_table');
     grid.innerHTML = '';
     
-    // Smart Grid Sizing
     const tables = getTables();
-    const count = tables.length;
-    let cols = 4;
-    // Prefer 4 unless 3 gives a better fill (e.g. 6, 9, 15, 21...) AND 4 leaves many orphans
-    // But user asked for "divisable by 3 or 4" slider, so we can infer intent.
-    // If divisible by 4, use 4. If divisible by 3 but not 4, use 3.
-    // Default 4.
-    if (count % 4 !== 0 && count % 3 === 0) cols = 3;
-    
-    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
     
     tables.forEach(tbl => {
         const el = document.createElement('button');
@@ -134,15 +271,19 @@ const renderTables = () => {
         };
         grid.appendChild(el);
     });
+    scheduleGridLayout(tables.length);
 };
 
 const renderMenu = (items) => {
     // Breadcrumbs
     const path = state.currentPath.map(p => p.label).join(' › ');
-    breadcrumbs.textContent = path ? `${state.currentTable.id} › ${path}` : `${state.currentTable.id} › Menu`;
+    breadcrumbs.textContent = path
+        ? `${state.currentTable.id} › ${path}`
+        : `${state.currentTable.id} › ${t('waiter.menu_root')}`;
     
     grid.innerHTML = '';
-    items.forEach(item => {
+    const visibleItems = (items || []).filter(item => (item.label || '').trim().length > 0);
+    visibleItems.forEach(item => {
         const el = document.createElement('button');
         el.className = 'grid-item';
         
@@ -171,6 +312,28 @@ const renderMenu = (items) => {
         }
         grid.appendChild(el);
     });
+    appendBackTile();
+    scheduleGridLayout(visibleItems.length + 1);
+};
+
+const appendBackTile = () => {
+    const el = document.createElement('button');
+    el.className = 'grid-item back-item';
+    el.setAttribute('aria-label', t('actions.back'));
+    el.innerHTML = `
+        <span class="back-icon"><i class="fas fa-arrow-left"></i></span>
+        <span>${t('actions.back')}</span>
+    `;
+    el.onclick = () => {
+        if (state.currentPath.length > 0) {
+            state.currentPath.pop();
+        } else {
+            state.currentTable = null;
+            state.currentPath = [];
+        }
+        render();
+    };
+    grid.appendChild(el);
 };
 
 const openQty = (item) => {
@@ -216,32 +379,36 @@ const renderOrderDock = () => {
     
     if (count === 0) {
         orderCountBadge.classList.add('hidden');
+        orderListContainer.classList.add('is-empty');
         orderListContainer.innerHTML = `<div class="empty-msg">${t('waiter.empty_order')}</div>`;
         sendBtn.disabled = true;
         sendBtn.textContent = t('actions.send');
+        scheduleOrderLayout(0);
     } else {
         orderCountBadge.classList.remove('hidden');
         orderCountBadge.textContent = count;
         sendBtn.disabled = false;
         sendBtn.textContent = `${t('actions.send')} (${count})`;
         
+        orderListContainer.classList.remove('is-empty');
         orderListContainer.innerHTML = '';
         state.currentOrder.forEach((item, idx) => {
             const row = document.createElement('div');
             row.className = 'order-item';
             row.innerHTML = `
-                <div><span class="qty">${item.qty}x</span> ${item.label}${item.context ? `<div class="muted">${item.context}</div>` : ''}</div>
-                <button class="text-btn danger small" aria-label="Remove">✕</button>
+                <div class="order-item-info">
+                    <div class="name"><span class="qty">${item.qty}x</span> ${item.label}</div>
+                    ${item.context ? `<div class="muted">${item.context}</div>` : ''}
+                </div>
+                <button class="order-item-remove" aria-label="${t('actions.remove')}">✕</button>
             `;
-            row.querySelector('button').onclick = () => {
+            row.querySelector('.order-item-remove').onclick = () => {
                 state.currentOrder.splice(idx, 1);
                 renderOrderDock();
             };
             orderListContainer.appendChild(row);
         });
-        
-        // Auto-scroll to bottom
-        orderListContainer.scrollTop = orderListContainer.scrollHeight;
+        scheduleOrderLayout(count);
     }
 };
 
@@ -275,19 +442,11 @@ const sendOrder = () => {
     render();
 };
 
-const handleBack = () => {
-    if (state.currentPath.length > 0) {
-        // Go up one level in menu
-        state.currentPath.pop();
-        render();
-    } else if (state.currentTable) {
-        // Go back to table selection
-        state.currentTable = null;
-        render();
-    } else {
-        // At root (Table Selection), so return to Lobby
-        if (window.returnToLobby) window.returnToLobby();
-    }
+const handleTables = () => {
+    if (!state.currentTable) return;
+    state.currentTable = null;
+    state.currentPath = [];
+    render();
 };
 
 export const refreshWaiter = render;

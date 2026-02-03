@@ -1,0 +1,16 @@
+1. The "Fixed Dock" Doctrine (Critical Fix)
+• Problem: Currently, the "Order Dock" (footer) grows as items are added. This reduces the available space for the main grid, causing buttons to resize and shift positions while the waiter is trying to work. This breaks muscle memory.
+• Solution: The Order Dock must have a hard-coded, fixed height (e.g., 20-25% of the viewport) and must never change size dynamically.
+• Internal Handling: If the order list inside the dock exceeds the fixed space, the inside of the dock should scroll, or use a compact horizontal scroll. The main grid above it must remain completely static.
+2. "Thumb-First" Navigation (One-Handed Use)
+• Problem: The "Back" button is currently in the top-left corner. This is unreachable for a waiter holding a tray in one hand and using the phone with the other.
+• Refactor: Remove the top-left "Back" button entirely.
+• New Controls: Integrate navigation buttons directly into the Order Dock area (bottom of screen).
+    ◦ "Up Level" Button: Acts like a file explorer "Up" (goes from Sub-category -> Parent Category).
+    ◦ "Home" Button: Jumps straight to the Top-Level Categories (skipping the Table selection screen).
+• Logic: When an item is added, stay in the current sub-category (do not auto-jump back). This allows waiters to order multiple items (e.g., Coffee + Milk) quickly without navigating back and forth.
+3. Visual Compression (Spacing)
+• Problem: The current UI has "generous" padding and gaps.
+• Solution: Drastically reduce margins, gaps, and padding throughout the app. The interface must be dense and information-rich to maximize the size of touch targets within the fixed viewport.
+4. Header Optimization
+• Compress the global header height. It takes up too much vertical real estate. It should be minimal, leaving maximum space for the main interaction grid.

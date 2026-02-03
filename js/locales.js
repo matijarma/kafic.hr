@@ -20,13 +20,16 @@ export const locales = {
         waiter: {
             select_table: "Select Table", table_short: "Tbl",
             current_order: "Current Order", empty: "No items",
-            empty_order: "Order is empty"
+            empty_order: "Order is empty",
+            tables: "Tables",
+            menu_root: "Menu"
         },
-        bartender: { incoming: "Incoming", all_done: "All caught up" },
+        bartender: { incoming: "Incoming", all_done: "All caught up", table_label: "Table {table}" },
         actions: {
             save: "Save & Close", connect: "Connect", copy_link: "Copy Link",
             send: "Send Order", clear: "Clear", mark_done: "Done",
-            add: "Add", install: "Install"
+            add: "Add", install: "Install", remove: "Remove",
+            cancel: "Cancel", confirm: "Confirm", back: "Back"
         },
         alerts: {
             order_sent: "Order Sent", network_error: "Not Connected",
@@ -49,17 +52,31 @@ export const locales = {
             item_added: "{qty}x {item} added",
             code_copied: "Ready to paste..."
         },
-        confirm: { clear: "Clear entire order?", leave_session: "Leave this session?" },
+        confirm: { title: "Confirm", clear: "Clear entire order?", leave_session: "Leave this session?" },
         manager: {
             title: "Manager",
             table_count: "Total Tables",
             menu_structure: "Menu Structure",
             add_item: "Add Item",
+            add_subitem: "Add Sub-item",
             upload_image: "Upload Image",
+            change_image: "Change Image",
             remove_image: "Remove Image",
             price_placeholder: "Price...",
             label_placeholder: "Item Label",
-            delete_item: "Delete"
+            delete_item: "Delete",
+            missing_label: "Missing label"
+        },
+        welcome: {
+            title: "Quick start",
+            step1: "Host a session to create a 6-letter code.",
+            step2: "Join from another device or scan the QR.",
+            step3: "Pick Waiter or Bartender and start serving.",
+            step4: "Tip: Works offline once connected."
+        },
+        footer: {
+            privacy: "100% private and open source",
+            credit: "Developed by Matija Radeljak"
         }
     },
     hr: {
@@ -83,13 +100,16 @@ export const locales = {
         waiter: {
             select_table: "Odaberi stol", table_short: "Stol",
             current_order: "Narudžba", empty: "Prazno",
-            empty_order: "Narudžba je prazna"
+            empty_order: "Narudžba je prazna",
+            tables: "Stolovi",
+            menu_root: "Meni"
         },
-        bartender: { incoming: "Narudžbe", all_done: "Sve riješeno" },
+        bartender: { incoming: "Narudžbe", all_done: "Sve riješeno", table_label: "Stol {table}" },
         actions: {
             save: "Spremi", connect: "Poveži", copy_link: "Kopiraj link",
             send: "Pošalji", clear: "Očisti", mark_done: "Riješeno",
-            add: "Dodaj", install: "Instaliraj"
+            add: "Dodaj", install: "Instaliraj", remove: "Ukloni",
+            cancel: "Odustani", confirm: "Potvrdi", back: "Natrag"
         },
         alerts: {
             order_sent: "Poslano", network_error: "Nema veze",
@@ -112,17 +132,31 @@ export const locales = {
             item_added: "{qty}x {item} dodano",
             code_copied: "Link kopiran"
         },
-        confirm: { clear: "Obrisati cijelu narudžbu?", leave_session: "Izaći iz sesije?" },
+        confirm: { title: "Potvrda", clear: "Obrisati cijelu narudžbu?", leave_session: "Izaći iz sesije?" },
         manager: {
             title: "Uređivanje",
             table_count: "Ukupno stolova",
             menu_structure: "Struktura Menija",
             add_item: "Dodaj stavku",
+            add_subitem: "Dodaj pod-stavku",
             upload_image: "Dodaj sliku",
+            change_image: "Promijeni sliku",
             remove_image: "Makni sliku",
             price_placeholder: "Cijena...",
             label_placeholder: "Naziv stavke",
-            delete_item: "Obriši"
+            delete_item: "Obriši",
+            missing_label: "Nedostaje naziv"
+        },
+        welcome: {
+            title: "Brzi početak",
+            step1: "Pokreni sesiju i dobit ćeš 6-znamenkasti kod.",
+            step2: "Pridruži se s drugog uređaja ili skeniraj QR.",
+            step3: "Odaberi Konobar ili Šanker i kreni s radom.",
+            step4: "Savjet: Radi i offline nakon spajanja."
+        },
+        footer: {
+            privacy: "100% privatno i open source",
+            credit: "Razvio Matija Radeljak"
         }
     }
 };

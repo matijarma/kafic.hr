@@ -17,67 +17,93 @@ export const initBartender = () => {
 };
 
 export const onOrderReceived = (data) => {
-    // Remove existing card for table if exists (update)
-    if (tableCards.has(data.tableId)) {
-        tableCards.get(data.tableId).remove();
-        tableCards.delete(data.tableId);
+    let card = tableCards.get(data.tableId);
+    if (!card) {
+        card = createTableCard(data.tableId);
+        tableCards.set(data.tableId, card);
     }
-    
-    const card = createCard(data);
-    tableCards.set(data.tableId, card);
-    
+
+    addOrderToCard(card, data);
+
     // Insert at top, but after empty state if it exists
     const empty = feed.querySelector('.empty-state');
     if (empty) empty.remove();
-    
-    feed.prepend(card);
+
+    feed.prepend(card.el);
     notify(data);
 };
 
-const createCard = (data) => {
+const createTableCard = (tableId) => {
     const el = document.createElement('div');
     el.className = 'feed-card';
-    
-    const time = new Date(data.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    
+
     let html = `
         <div class="feed-header">
-            <span>Table ${data.tableId}</span>
-            <span style="font-weight:400; font-size:0.9em; opacity:0.7">${time}</span>
-        </div>
-        <div class="feed-items">
-    `;
-    
-    data.items.forEach(item => {
-        html += `
-            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--bg-surface-2)">
-                <span><b>${item.qty}</b> ${item.label}</span>
-                <small style="opacity:0.7">${item.context||''}</small>
+            <div class="feed-title-row">
+                <span class="feed-title">${t('bartender.table_label', { table: tableId })}</span>
+                <span class="feed-count" data-count>0</span>
             </div>
-        `;
-    });
-    
-    html += `</div>
-        <button class="feed-btn" data-action="done">${t('actions.mark_done')}</button>
+        </div>
+        <div class="feed-orders"></div>
     `;
     
     el.innerHTML = html;
-    
-    el.querySelector('[data-action="done"]').onclick = () => {
-        el.style.opacity = '0';
-        el.style.transform = 'scale(0.95)';
-        setTimeout(() => {
-            el.remove();
-            tableCards.delete(data.tableId);
-            checkEmpty();
-        }, 200);
+
+    return {
+        el,
+        ordersEl: el.querySelector('.feed-orders'),
+        countEl: el.querySelector('[data-count]'),
+        tableId
     };
-    
-    return el;
+};
+
+const addOrderToCard = (card, data) => {
+    const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const itemsHtml = data.items.map(item => `
+        <div class="feed-item">
+            <div class="feed-item-name"><span class="qty">${item.qty}x</span> ${item.label}</div>
+            ${item.context ? `<div class="feed-item-context">${item.context}</div>` : ''}
+        </div>
+    `).join('');
+
+    const orderEl = document.createElement('div');
+    orderEl.className = 'feed-order';
+    orderEl.innerHTML = `
+        <div class="feed-order-header">
+            <span class="feed-order-time">${time}</span>
+            <button class="feed-btn feed-order-done" data-action="done">${t('actions.mark_done')}</button>
+        </div>
+        <div class="feed-order-items">
+            ${itemsHtml}
+        </div>
+    `;
+
+    orderEl.querySelector('[data-action="done"]').onclick = () => {
+        orderEl.style.opacity = '0';
+        orderEl.style.transform = 'scale(0.98)';
+        setTimeout(() => {
+            orderEl.remove();
+            updateTableCount(card);
+            if (card.ordersEl.children.length === 0) {
+                card.el.remove();
+                tableCards.delete(card.tableId);
+                checkEmpty();
+            }
+        }, 160);
+    };
+
+    card.ordersEl.prepend(orderEl);
+    updateTableCount(card);
+};
+
+const updateTableCount = (card) => {
+    if (!card?.countEl) return;
+    const count = card.ordersEl.children.length;
+    card.countEl.textContent = count;
 };
 
 const checkEmpty = () => {
-    if (feed.children.length === 0) {
+    if (tableCards.size === 0) {
         feed.innerHTML = `
             <div class="empty-state">
                 <div class="icon">✓</div>
