@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="description" content="Kafić.hr - Sinkronizirane narudžbe od šanka do konobara">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Kafić.hr</title>
+    <link rel="stylesheet" href="/css/fontawesome/css/all.css">
+    <script>
+        // Bump this string to bust caches across all assets and the service worker.
+        //window.__APP_VERSION__ = '0.2.32';
+        window.__APP_VERSION__ = Math.round(Math.random()*1000000)
+        window.__ASSET_SUFFIX__ = `?v=${window.__APP_VERSION__}`;
+        document.documentElement.dataset.version = window.__APP_VERSION__;
+    </script>
+
+    <link rel="stylesheet" href="/css/googlefonts.css">
+
+    <script>
+        (function() {
+            try {
+                const stored = localStorage.getItem('barlink_theme');
+                const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (stored === 'dark' || (!stored && sysDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                    document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0f1a');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                }
+            } catch(e) {}
+        })();
+    </script>
+
+    <script>
+        (function() {
+            const suffix = window.__ASSET_SUFFIX__ || '';
+            const addLink = (rel, href, attrs = {}) => {
+                const link = document.createElement('link');
+                link.rel = rel;
+                link.href = href + suffix;
+                Object.entries(attrs).forEach(([k, v]) => link.setAttribute(k, v));
+                document.head.appendChild(link);
+            };
+
+            addLink('stylesheet', './css/style.css');
+            addLink('manifest', './manifest.json');
+            addLink('icon', './icon-192.png', { sizes: '192x192' });
+            addLink('icon', './icon-512.png', { sizes: '512x512' });
+            addLink('apple-touch-icon', './icon-192.png');
+
+            const importMap = {
+                imports: {
+                    app: `./js/app.js${suffix}`,
+                    network: `./js/network.js${suffix}`,
+                    state: `./js/state.js${suffix}`,
+                    session: `./js/session.js${suffix}`,
+                    waiter: `./js/waiter.js${suffix}`,
+                    bartender: `./js/bartender.js${suffix}`,
+                    qr: `./js/qr.js${suffix}`,
+                    i18n: `./js/i18n.js${suffix}`,
+                    locales: `./js/locales.js${suffix}`,
+                    ux: `./js/ux.js${suffix}`,
+                    data: `./js/data.js${suffix}`,
+                    db: `./js/db.js${suffix}`,
+                    manager: `./js/manager.js${suffix}`,
+                    trystero: `./js/trystero.min.js${suffix}`
+                }
+            };
+
+            const mapEl = document.createElement('script');
+            mapEl.type = 'importmap';
+            mapEl.textContent = JSON.stringify(importMap);
+            document.head.appendChild(mapEl);
+        })();
+    </script>
+</head>
+<body>
+
+    <!-- APP CONTAINER -->
+    <main id="app-root">
+        
+        <!-- VIEW 1: SETUP (Home, Join, Lobby) -->
+        <section id="view-setup" class="view active">
+            <!-- Global Top Bar for Setup -->
+            <header class="app-header">
+                <div class="header-left">
+                    <div class="logo-icon">B</div>
+                    <input type="text" id="header-username" class="inline-input" placeholder="Your Name" aria-label="Username" data-i18n="setup.label_name">
+                </div>
+                <div class="header-right">
+                    <button id="btn-toggle-theme" class="icon-btn small" aria-label="Toggle Theme">◐</button>
+                    <button id="btn-toggle-lang" class="icon-btn small" aria-label="Toggle Language"></button>
+                </div>
+            </header>
+
+            <!-- Slide 1: Welcome -->
+            <div id="setup-home" class="setup-slide active">
+                <div class="hero">
+                    <h1 data-i18n="app.tagline">Sync Your Bar</h1>
+                    <p data-i18n="app.subline">Instant order management.</p>
+                    <div class="meta-row">
+                        <span class="pill ghost" id="version-pill">v0.2.0</span>
+                        <span class="pill ghost hidden" id="offline-pill">Offline</span>
+                        <button id="btn-install-app" class="pill action hidden" data-i18n="actions.install">Install app</button>
+                    </div>
+                </div>
+                
+                <div class="action-dock">
+                    <button id="btn-host" class="big-btn primary" data-i18n="setup.host">
+                        <span>+</span> Host Session
+                    </button>
+                    <button id="btn-join" class="big-btn secondary" data-i18n="setup.join">
+                        <span>→</span> Join Session
+                    </button>
+                    <!-- Resume Pill -->
+                    <div id="resume-dock" class="resume-dock hidden">
+                        <button id="btn-resume" class="resume-pill">
+                            <span class="dot"></span>
+                            <span data-i18n="setup.resume">Resume</span>
+                            <code id="resume-code-display">ABCD</code>
+                        </button>
+                    </div>
+                </div>
+
+                <button id="btn-reset-app" class="corner-trash" aria-label="Reset App">🗑</button>
+            </div>
+
+            <!-- Slide 2: Join Input -->
+            <div id="setup-join" class="setup-slide">
+                <div class="slide-header">
+                    <button class="nav-back-btn" aria-label="Back">←</button>
+                    <h2 data-i18n="setup.join_title">Enter Code</h2>
+                </div>
+                <div class="center-content">
+                    <p class="helper-text" id="join-hint" aria-live="polite" data-i18n="setup.join_hint">Enter the 6-letter code from the host.</p>
+                    <div class="code-input-group">
+                        <input type="text" id="join-code-input" maxlength="6" placeholder="______" inputmode="latin-prose" autocomplete="off" autocapitalize="characters" aria-describedby="join-hint">
+                        <div class="input-tools">
+                            <button id="btn-scan" aria-label="Scan QR">📷</button>
+                            <button id="btn-paste" aria-label="Paste">📋</button>
+                        </div>
+                    </div>
+                    <div class="status-line" id="join-status" role="status" aria-live="polite"></div>
+                    <button id="btn-confirm-join" class="btn-primary full-width large mt-4" data-i18n="actions.connect" disabled>Connect</button>
+                </div>
+            </div>
+
+            <!-- Slide 3: Lobby -->
+            <div id="setup-lobby" class="setup-slide">
+                <div class="slide-header">
+                    <button id="leave-lobby-btn" class="nav-back-btn" aria-label="Leave">✕</button>
+                    <h2 data-i18n="setup.lobby">Lobby</h2>
+                    <button id="btn-manage" class="icon-btn" style="margin-left:auto">⚙</button>
+                </div>
+
+                <div class="lobby-card">
+                    <div class="qr-box">
+                        <canvas id="qr-canvas"></canvas>
+                    </div>
+                    <div class="session-info">
+                        <div class="session-code" id="display-code">------</div>
+                        <button id="btn-copy-link" class="text-btn small" data-i18n="actions.copy_link">Copy Invite Link</button>
+                    </div>
+                    <div class="peers-indicator">
+                        <span class="status-dot"></span>
+                        <span id="peer-count-label">Waiting for peers...</span>
+                    </div>
+                </div>
+
+                <div class="role-selector">
+                    <p class="label" data-i18n="setup.select_role">Select your role</p>
+                    <div class="role-cards">
+                        <button class="role-card" data-role="waiter">
+                            <div class="icon">☕</div>
+                            <div class="text" data-i18n="roles.waiter">Waiter</div>
+                        </button>
+                        <button class="role-card" data-role="bartender">
+                            <div class="icon">🍸</div>
+                            <div class="text" data-i18n="roles.bartender">Bartender</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: WAITER -->
+        <section id="view-waiter" class="view">
+            <header class="app-header">
+                <button id="waiter-back-btn" class="icon-btn" aria-label="Back">←</button>
+                <div class="header-titles">
+                    <div class="breadcrumbs" id="waiter-breadcrumbs">Tables</div>
+                </div>
+                <div class="header-actions">
+                    <div class="connection-pill" id="waiter-net-pill"></div>
+                </div>
+            </header>
+
+            <div id="waiter-grid" class="grid-layout">
+                <!-- Dynamic Items -->
+            </div>
+
+            <!-- Bottom Drawer for Order -->
+            <div id="order-dock" class="order-dock">
+                <div class="dock-handle"></div>
+                <div class="dock-summary">
+                    <span id="order-count-badge" class="badge hidden">0</span>
+                    <span data-i18n="waiter.current_order">Current Order</span>
+                    <button id="btn-clear-order" class="text-btn danger" data-i18n="actions.clear">Clear</button>
+                </div>
+                <div id="order-list" class="order-list-container">
+                    <div class="empty-msg" data-i18n="waiter.empty">No items</div>
+                </div>
+                <div class="dock-actions">
+                    <button id="btn-send-order" class="btn-primary full-width large" disabled data-i18n="actions.send">Send Order</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- QUANTITY SHEET (Overlay) -->
+        <dialog id="qty-modal" class="bottom-sheet">
+             <div class="sheet-content">
+                <div class="sheet-header">
+                    <div class="sheet-title">
+                        <h3 id="qty-item-title">Item</h3>
+                        <div id="qty-item-path" class="pill ghost small hidden"></div>
+                    </div>
+                    <button id="btn-close-qty" class="icon-btn">✕</button>
+                </div>
+                <div class="qty-body">
+                    <div class="qty-display">
+                        <button class="qty-step" data-step="-1" aria-label="Decrease">−</button>
+                        <div class="qty-value" id="qty-value">1</div>
+                        <button class="qty-step" data-step="1" aria-label="Increase">+</button>
+                    </div>
+                    <div class="qty-grid" id="qty-grid-container">
+                        <!-- Buttons injected via JS -->
+                    </div>
+                    <div class="qty-footer">
+                        <button id="btn-clear-qty" class="text-btn danger" data-i18n="actions.clear">Clear</button>
+                        <button id="btn-apply-qty" class="btn-primary full-width large" data-i18n="actions.add">Add to order</button>
+                    </div>
+                </div>
+             </div>
+        </dialog>
+
+        <!-- VIEW 3: BARTENDER -->
+        <section id="view-bartender" class="view">
+            <header class="app-header">
+                <button id="bartender-back-btn" class="icon-btn" aria-label="Back">←</button>
+                <div class="header-titles">
+                    <span class="main" data-i18n="bartender.incoming">Incoming Orders</span>
+                </div>
+                <div class="header-actions">
+                    <!-- Status pill or extra actions can go here -->
+                </div>
+            </header>
+
+            <div id="bartender-feed" class="feed-layout">
+                <div class="empty-state">
+                    <div class="icon">✓</div>
+                    <p data-i18n="bartender.all_done">All caught up</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 4: MANAGER -->
+        <section id="view-manager" class="view">
+            <!-- Content injected by manager.js -->
+        </section>
+
+    </main>
+
+    <!-- Scanner Overlay -->
+    <div id="scan-overlay" class="overlay hidden">
+        <button id="btn-close-scan" class="fab-close">✕</button>
+        <video id="scan-video" autoplay playsinline></video>
+        <div class="scan-reticle"></div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import 'app';
+    </script>
+</body>
+</html>

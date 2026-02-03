@@ -1,0 +1,278 @@
+import { getTableCount, setTableCount, getMenu, saveMenu } from 'data';
+import { saveImage, deleteImage, getImage } from 'db';
+import { t } from 'i18n';
+import { toast, confirm } from 'ux';
+
+let container = null;
+let activePopover = null;
+
+// valid steps logic
+const getValidTableCounts = () => {
+    const arr = [];
+    for (let i = 6; i <= 60; i++) {
+        if (i % 3 === 0 || i % 4 === 0) arr.push(i);
+    }
+    return arr;
+};
+const VALID_COUNTS = getValidTableCounts();
+
+export function initManager(targetElement) {
+    container = targetElement;
+    render();
+    
+    // Global click to close popovers
+    document.addEventListener('click', (e) => {
+        if (activePopover && !activePopover.contains(e.target) && !e.target.closest('.node-menu-btn')) {
+            closePopover();
+        }
+    });
+}
+
+function closePopover() {
+    if (activePopover) {
+        activePopover.remove();
+        activePopover = null;
+        // Clean up active states on buttons
+        document.querySelectorAll('.node-menu-btn.active').forEach(b => b.classList.remove('active'));
+    }
+}
+
+function render() {
+    if (!container) return;
+    const currentCount = getTableCount();
+    let idx = VALID_COUNTS.findIndex(c => c >= currentCount);
+    if (idx === -1) idx = VALID_COUNTS.length - 1;
+    
+    const menu = getMenu();
+
+    container.innerHTML = `
+        <div class="manager-container">
+            <header class="manager-header">
+                <button class="icon-btn" id="mgr-back" aria-label="Back">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                </button>
+                <h2 class="header-title">${t('manager.title')}</h2>
+                <div style="width:40px"></div>
+            </header>
+
+            <div class="config-card">
+                <label class="section-label">${t('manager.table_count')}</label>
+                <div class="slider-group">
+                    <div class="slider-val" id="disp-count">${VALID_COUNTS[idx]}</div>
+                    <input type="range" id="inp-table-count" min="0" max="${VALID_COUNTS.length - 1}" value="${idx}">
+                </div>
+            </div>
+
+            <div class="config-card flex-fill">
+                <div class="section-header">
+                    <label class="section-label">${t('manager.menu_structure')}</label>
+                </div>
+                
+                <div class="tree-editor" id="menu-tree"></div>
+                
+                <button class="btn-ghost full-width" id="btn-add-root">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                    ${t('manager.add_item')}
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Bindings
+    container.querySelector('#mgr-back').onclick = () => {
+        window.dispatchEvent(new CustomEvent('nav-back'));
+    };
+
+    const inpSlider = container.querySelector('#inp-table-count');
+    const dispCount = container.querySelector('#disp-count');
+    
+    inpSlider.oninput = () => {
+        const val = VALID_COUNTS[parseInt(inpSlider.value)];
+        dispCount.textContent = val;
+    };
+    
+    inpSlider.onchange = () => {
+        const val = VALID_COUNTS[parseInt(inpSlider.value)];
+        setTableCount(val);
+    };
+
+    const treeRoot = container.querySelector('#menu-tree');
+    renderTree(treeRoot, menu);
+
+    container.querySelector('#btn-add-root').onclick = () => {
+        menu.push({ id: crypto.randomUUID(), label: '', children: [] });
+        saveMenu(menu);
+        renderTree(treeRoot, menu);
+    };
+}
+
+function renderTree(containerEl, items) {
+    containerEl.innerHTML = '';
+    
+    items.forEach((item, idx) => {
+        const nodeEl = document.createElement('div');
+        nodeEl.className = 'node';
+        
+        const hasChildren = item.children && item.children.length > 0;
+        
+        // Use a content wrapper for easy flex management
+        nodeEl.innerHTML = `
+            <div class="node-row">
+                <div class="node-toggle ${hasChildren ? '' : 'invisible'}" data-action="toggle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 18l6-6-6-6" /></svg>
+                </div>
+                
+                <div class="node-content-wrapper">
+                    <div class="node-thumb-mini hidden" data-action="img"></div>
+                    <input type="text" class="node-input" value="${item.label}" placeholder="${t('manager.label_placeholder')}">
+                    <div class="node-price-tag ${hasChildren ? 'hidden' : ''}" contenteditable="true">${item.price || ''}</div>
+                </div>
+                
+                <div class="node-menu-btn" data-action="menu">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                </div>
+            </div>
+            <div class="node-children ${item._isOpen ? '' : 'closed'}"></div>
+        `;
+
+        const toggleBtn = nodeEl.querySelector('[data-action="toggle"]');
+        const childrenContainer = nodeEl.querySelector('.node-children');
+        const labelInput = nodeEl.querySelector('.node-input');
+        const priceTag = nodeEl.querySelector('.node-price-tag');
+        const menuBtn = nodeEl.querySelector('[data-action="menu"]');
+        const thumbEl = nodeEl.querySelector('[data-action="img"]');
+
+        // Toggle Logic
+        toggleBtn.onclick = () => {
+            item._isOpen = !item._isOpen;
+            childrenContainer.classList.toggle('closed', !item._isOpen);
+            toggleBtn.classList.toggle('open', item._isOpen);
+        };
+        if(item._isOpen) toggleBtn.classList.add('open');
+
+        // Label Input
+        labelInput.onchange = () => {
+            item.label = labelInput.value;
+            saveMenu(getMenu());
+        };
+
+        // Price Input (ContentEditable for cleaner look)
+        priceTag.onblur = () => {
+            const val = parseFloat(priceTag.innerText);
+            item.price = isNaN(val) ? 0 : val;
+            priceTag.innerText = item.price || '';
+            saveMenu(getMenu());
+        };
+        priceTag.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                priceTag.blur();
+            }
+        };
+
+        // Image Handling
+        const updateImage = () => {
+            if (item.imageId) {
+                thumbEl.classList.remove('hidden');
+                getImage(item.imageId).then(blob => {
+                    if(blob) thumbEl.style.backgroundImage = `url(${URL.createObjectURL(blob)})`;
+                });
+            } else {
+                thumbEl.classList.add('hidden');
+            }
+        };
+        updateImage();
+
+        // Menu Logic
+        menuBtn.onclick = (e) => {
+            e.stopPropagation();
+            closePopover(); // Close others
+            
+            menuBtn.classList.add('active');
+            
+            const pop = document.createElement('div');
+            pop.className = 'popover-menu';
+            pop.innerHTML = `
+                <button class="menu-item" data-act="add">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg> Add Sub-item
+                </button>
+                <button class="menu-item" data-act="img">
+                     <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg> ${item.imageId ? 'Change Image' : 'Add Image'}
+                </button>
+                ${item.imageId ? `<button class="menu-item" data-act="rm-img"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg> Remove Image</button>` : ''}
+                <div style="height:1px; background:var(--border-strong); margin:4px 0;"></div>
+                <button class="menu-item danger" data-act="del">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Delete
+                </button>
+            `;
+            
+            // Positioning logic
+            const rect = menuBtn.getBoundingClientRect();
+            pop.style.top = `${rect.bottom + 4}px`;
+            // Align right edge
+            const left = Math.max(10, rect.right - 180);
+            pop.style.left = `${left}px`;
+            
+            document.body.appendChild(pop);
+            activePopover = pop;
+            
+            // Menu Actions
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.onchange = async () => {
+                 if (fileInput.files[0]) {
+                    const blob = fileInput.files[0];
+                    if (item.imageId) await deleteImage(item.imageId);
+                    item.imageId = await saveImage(blob);
+                    saveMenu(getMenu());
+                    updateImage();
+                    closePopover();
+                }
+            };
+
+            pop.querySelector('[data-act="add"]').onclick = () => {
+                if (!item.children) item.children = [];
+                item.children.push({ id: crypto.randomUUID(), label: '', price: 0 });
+                item._isOpen = true;
+                saveMenu(getMenu());
+                closePopover();
+                // We need to re-render to show the new structure
+                // Ideally we'd just render children, but we need to update the parent row state (toggle visibility)
+                toggleBtn.classList.remove('invisible');
+                toggleBtn.classList.add('open');
+                priceTag.classList.add('hidden');
+                childrenContainer.classList.remove('closed');
+                renderTree(childrenContainer, item.children);
+            };
+
+            pop.querySelector('[data-act="img"]').onclick = () => fileInput.click();
+            
+            if(pop.querySelector('[data-act="rm-img"]')) {
+                pop.querySelector('[data-act="rm-img"]').onclick = async () => {
+                    await deleteImage(item.imageId);
+                    delete item.imageId;
+                    saveMenu(getMenu());
+                    updateImage();
+                    closePopover();
+                };
+            }
+
+            pop.querySelector('[data-act="del"]').onclick = async () => {
+                closePopover();
+                if (await confirm(t('manager.delete_item') + '?')) {
+                    items.splice(idx, 1);
+                    saveMenu(getMenu());
+                    renderTree(containerEl, items);
+                }
+            };
+        };
+
+        containerEl.appendChild(nodeEl);
+
+        // Recursion
+        if (hasChildren) {
+            renderTree(childrenContainer, item.children);
+        }
+    });
+}
