@@ -56,6 +56,14 @@ function render() {
             </header>
 
             <div class="config-card">
+                <label class="section-label">${t('settings.handed')}</label>
+                <div class="hand-toggle" role="group" aria-label="${t('settings.handed')}">
+                    <button class="hand-btn" data-hand="left">${t('settings.left')}</button>
+                    <button class="hand-btn" data-hand="right">${t('settings.right')}</button>
+                </div>
+            </div>
+
+            <div class="config-card">
                 <label class="section-label">${t('manager.table_count')}</label>
                 <div class="slider-group">
                     <div class="slider-val" id="disp-count">${VALID_COUNTS[idx]}</div>
@@ -85,6 +93,17 @@ function render() {
 
     const inpSlider = container.querySelector('#inp-table-count');
     const dispCount = container.querySelector('#disp-count');
+
+    const handButtons = Array.from(container.querySelectorAll('.hand-btn'));
+    const applyHanded = (val) => {
+        const hand = val === 'left' ? 'left' : 'right';
+        localStorage.setItem('barlink_hand', hand);
+        document.body.dataset.hand = hand;
+        handButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.hand === hand));
+    };
+    const savedHand = localStorage.getItem('barlink_hand') || 'right';
+    applyHanded(savedHand);
+    handButtons.forEach(btn => btn.onclick = () => applyHanded(btn.dataset.hand));
     
     inpSlider.oninput = () => {
         const val = VALID_COUNTS[parseInt(inpSlider.value)];

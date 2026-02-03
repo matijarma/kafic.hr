@@ -11,8 +11,8 @@
     <link rel="stylesheet" href="/css/fontawesome/css/all.min.css">
     <script>
         // Bump this string to bust caches across all assets and the service worker.
-        //window.__APP_VERSION__ = "030226_" + '0.0.2';
-        window.__APP_VERSION__ = Math.round(Math.random()*1000000)
+        window.__APP_VERSION__ = "030226_" + '0.0.3';
+        //window.__APP_VERSION__ = Math.round(Math.random()*1000000)
         window.__ASSET_SUFFIX__ = `?v=${window.__APP_VERSION__}`;
         document.documentElement.dataset.version = window.__APP_VERSION__;
     </script>
@@ -235,6 +235,11 @@
             <div id="waiter-grid" class="grid-layout">
                 <!-- Dynamic Items -->
             </div>
+
+            <button id="waiter-back-btn" class="waiter-back-fab hidden" aria-label="Back">
+                <i class="fas fa-arrow-left"></i>
+                <span class="label" data-i18n="actions.back">Back</span>
+            </button>
 
             <!-- Bottom Drawer for Order -->
             <div id="order-dock" class="order-dock">

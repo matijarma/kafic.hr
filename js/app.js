@@ -76,6 +76,11 @@ const clamp = (val, min, max) => Math.min(max, Math.max(min, val));
 const setBodyView = (viewId = 'setup') => {
     document.body.dataset.view = viewId;
 };
+const applyHandedness = (hand) => {
+    const normalized = hand === 'left' ? 'left' : 'right';
+    document.body.dataset.hand = normalized;
+    return normalized;
+};
 const syncUsernameWidth = () => {
     if (!headerUsername) return;
     const base = headerUsername.value?.trim() || headerUsername.placeholder || '';
@@ -108,6 +113,7 @@ function bootstrap() {
     updateLangBtn(savedLang);
     if (versionPill) versionPill.textContent = `v${APP_VERSION}`;
     if (offlinePill) offlinePill.textContent = t('alerts.offline');
+    applyHandedness(localStorage.getItem('barlink_hand') || 'right');
 
     // 2. Welcome note collapse state
     const welcomeNote = document.getElementById('welcome-note');
@@ -250,6 +256,10 @@ function setupEvents() {
         };
     }
     btnCopyLink.onclick = async () => {
+        if (!state.sessionCode) {
+            toast(t('alerts.no_session'), 'error');
+            return;
+        }
         const url = `${window.location.origin}${window.location.pathname}?join=${state.sessionCode}`;
         try {
             await navigator.clipboard.writeText(url);
@@ -369,6 +379,9 @@ function goToView(viewId, push = true) {
 }
 
 function goToSlide(slideId, push = true) {
+    if (slideId === 'lobby' && (!state.sessionCode || !state.roomId)) {
+        slideId = 'home';
+    }
     Object.values(slides).forEach(el => el.classList.remove('active'));
     slides[slideId].classList.add('active');
     setBodyView('setup');

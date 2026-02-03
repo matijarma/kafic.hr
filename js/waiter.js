@@ -10,6 +10,7 @@ import { toast, registerModal, popModal, confirm } from 'ux';
 const grid = document.getElementById('waiter-grid');
 const breadcrumbs = document.getElementById('waiter-breadcrumbs');
 const netPill = document.getElementById('waiter-net-pill');
+const backBtn = document.getElementById('waiter-back-btn');
 
 // Order Dock
 const orderDock = document.getElementById('order-dock');
@@ -42,6 +43,7 @@ export const initWaiter = () => {
     // Setup event listeners
     sendBtn.onclick = sendOrder;
     navTablesBtn.onclick = handleTables;
+    if (backBtn) backBtn.onclick = handleBack;
     qtySteps.forEach(btn => btn.onclick = () => stepQty(Number(btn.dataset.step || 0)));
     clearQtyBtn.onclick = () => {
         pendingQty = 1;
@@ -198,8 +200,10 @@ const applyGridLayout = (count) => {
     }
 
     if (best.size <= 0) return;
-    grid.style.gridTemplateColumns = `repeat(${best.cols}, ${best.size}px)`;
-    grid.style.gridAutoRows = `${best.size}px`;
+    const maxCellSize = 180;
+    const finalSize = Math.min(best.size, maxCellSize);
+    grid.style.gridTemplateColumns = `repeat(${best.cols}, ${finalSize}px)`;
+    grid.style.gridAutoRows = `${finalSize}px`;
 };
 
 const buildQtyGrid = () => {
@@ -239,6 +243,12 @@ const render = () => {
 
     if (navTablesBtn) {
         navTablesBtn.disabled = !state.currentTable;
+    }
+    if (backBtn) {
+        backBtn.classList.toggle('hidden', !state.currentTable);
+    }
+    if (grid) {
+        grid.classList.toggle('has-back', !!state.currentTable);
     }
 
     // Grid Content
@@ -312,28 +322,18 @@ const renderMenu = (items) => {
         }
         grid.appendChild(el);
     });
-    appendBackTile();
-    scheduleGridLayout(visibleItems.length + 1);
+    scheduleGridLayout(visibleItems.length);
 };
-
-const appendBackTile = () => {
-    const el = document.createElement('button');
-    el.className = 'grid-item back-item';
-    el.setAttribute('aria-label', t('actions.back'));
-    el.innerHTML = `
-        <span class="back-icon"><i class="fas fa-arrow-left"></i></span>
-        <span>${t('actions.back')}</span>
-    `;
-    el.onclick = () => {
-        if (state.currentPath.length > 0) {
-            state.currentPath.pop();
-        } else {
-            state.currentTable = null;
-            state.currentPath = [];
-        }
-        render();
-    };
-    grid.appendChild(el);
+ 
+const handleBack = () => {
+    if (!state.currentTable) return;
+    if (state.currentPath.length > 0) {
+        state.currentPath.pop();
+    } else {
+        state.currentTable = null;
+        state.currentPath = [];
+    }
+    render();
 };
 
 const openQty = (item) => {
