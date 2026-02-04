@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Kafić.hr POS",
+  "version": "1.0.0",
+  "description": "Professional Side-Panel POS for Kafić.hr",
+  "icons": {
+    "192": "images/kafic_icon_192.png",
+    "512": "images/kafic_icon_512.png"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "permissions": ["sidePanel"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open POS"
+  }
+}

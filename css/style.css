@@ -72,7 +72,7 @@
     color: var(--text-primary);
 }
 
-html, body { margin: 0; padding: 0; min-height: 100%; }
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 
 body {
     font-family: var(--font-sans);
@@ -81,13 +81,17 @@ body {
     font-size: 15px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    position: fixed;
+    inset: 0;
 }
 
 main#app-root {
     position: relative;
     width: 100%;
-    min-height: 100vh;
+    height: 100dvh;
     padding: 12px 12px 20px;
+    overflow: hidden;
+    margin: 0 auto;
 }
 
 a { color: var(--accent); text-decoration: none; }
@@ -229,14 +233,14 @@ button:focus-visible, input:focus-visible {
 .text-btn:hover { background: var(--accent-soft); color: var(--accent-strong); }
 
 .icon-btn, .nav-back-btn {
-    width: 34px; height: 34px;
+    width: 34px;
+    height: 34px;
     border-radius: 10px;
     border: 1px solid var(--border-strong);
-    color: var(--text-primary);
+    color: var(--text-muted);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-surface-1);
     box-shadow: var(--shadow-soft);
 }
 .icon-btn.small { width: 28px; height: 28px; }
@@ -685,11 +689,14 @@ button.grid-item > * {
     padding: 8px 12px;
     border-radius: 999px;
     border: 1px solid var(--border-strong);
-    background: var(--bg-surface-1);
+    background: var(--accent);
     box-shadow: var(--shadow-elevated);
     font-weight: 800;
     font-size: 0.92rem;
     color: var(--text-primary);
+}
+#waiter-back-btn * , #waiter-back-btn *::before, #waiter-back-btn *::after , button#btn-close-qty i::before{
+    color: white !important;
 }
 body[data-hand="right"] .waiter-back-fab {
     right: 12px;
@@ -723,7 +730,9 @@ body[data-hand="left"] .waiter-back-fab {
 .net-indicator.connected .dot { background: var(--success); }
 .net-indicator.offline { color: var(--danger); border-color: rgba(225, 75, 75, 0.35); background: rgba(225, 75, 75, 0.1); }
 .net-indicator.offline .dot { background: var(--danger); }
-
+button#btn-close-qty {
+    background-color: var(--accent);
+}
 .order-dock {
     background: var(--bg-translucent);
     border-top: 1px solid var(--border-strong);
@@ -1077,6 +1086,100 @@ body[data-hand="left"] .sheet-header { flex-direction: row-reverse; }
     color: #fff;
     border-color: var(--accent-strong);
 }
+
+/* --- NEW COMPACT SETTINGS --- */
+.compact-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+    padding: 16px 20px;
+}
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.control-group.shrink { flex: 0 0 auto; }
+.control-group.grow { flex: 1; }
+
+.v-sep {
+    width: 1px;
+    height: 40px;
+    background: var(--border-strong);
+    margin: 0 4px;
+}
+
+.slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.slider-val-badge {
+    font-family: var(--font-mono);
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--accent);
+    background: var(--bg-surface-2);
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-strong);
+}
+
+/* Fancy Switch */
+.fancy-switch {
+    position: relative;
+    display: inline-block;
+    width: 72px;
+    height: 36px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.fancy-switch input { opacity: 0; width: 0; height: 0; }
+.switch-track {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    transition: 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+    overflow: hidden;
+}
+.switch-icon {
+    font-size: 0.75rem;
+    font-weight: 900;
+    color: var(--text-muted);
+    z-index: 1;
+    pointer-events: none;
+    transition: color 0.3s;
+}
+.switch-thumb {
+    position: absolute;
+    height: 28px;
+    width: 28px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 2;
+    border: 1px solid rgba(0,0,0,0.04);
+}
+/* Checked State (Left Handed) */
+input:checked + .switch-track .switch-thumb {
+    transform: translateX(36px);
+    background: var(--accent);
+}
+input:checked + .switch-track .switch-icon.left { color: var(--accent); }
+input:checked + .switch-track .switch-icon.right { color: var(--text-muted); }
+/* Unchecked State (Right Handed) */
+input:not(:checked) + .switch-track .switch-icon.right { color: var(--accent); }
+
 
 /* Slider */
 .slider-group {
@@ -1512,4 +1615,283 @@ video { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
         margin-left: 6px;
     }
     .tree-meta { flex-wrap: wrap; gap: 6px; }
+}
+
+/* --- DESKTOP / TABLET OVERHAUL --- */
+@media (min-width: 768px) {
+    /* 1. Global Layout & Typography */
+    main#app-root {
+        padding: 30px;
+        max-width: 100vw;
+        height: 100dvh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: var(--bg-body);
+    }
+
+    .view {
+        position: relative; /* Use normal flow inside the flex container, but view logic needs absolute */
+        max-width: 1400px;
+        height: 100%;
+        margin: 0 auto;
+        padding: 0;
+        left: auto;
+        transform: none;
+        overflow-y: auto; /* Allow scrolling within the view if needed */
+        overflow-x: hidden;
+        /* Re-implement absolute positioning safely for view switching */
+        position: absolute; 
+        inset: 20px;
+        max-height: calc(100vh - 40px);
+    }
+    
+    .view.active {
+        display: grid;
+        grid-template-rows: auto 1fr;
+    }
+
+    .app-header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        margin-bottom: 24px;
+        height: 72px;
+        padding: 0 32px;
+        border-radius: 20px;
+        border: 1px solid var(--border-soft);
+        background: rgba(255, 255, 255, 0.85); /* Glassmorphism */
+        backdrop-filter: blur(16px);
+    }
+    [data-theme="dark"] .app-header { background: rgba(31, 41, 55, 0.85); }
+
+
+    /* 2. Setup View - Dashboard Style */
+    #setup-home.setup-slide.active,
+    #setup-lobby.setup-slide.active,
+    #setup-join.setup-slide.active {
+        display: grid;
+        grid-template-columns: 450px 1fr;
+        grid-template-rows: auto auto; /* Allow content to dictate height */
+        gap: 32px;
+        max-width: 1100px;
+        margin: 4vh auto;
+        padding: 40px;
+        background: var(--bg-surface-1);
+        border: 1px solid var(--border-strong);
+        border-radius: 32px;
+        box-shadow: var(--shadow-elevated);
+        align-content: start;
+        height: auto;
+    }
+
+    #setup-home .hero {
+        grid-column: 1 / -1;
+        text-align: center;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border-soft);
+    }
+    #setup-home .hero img { width: 80px !important; height: 80px !important; }
+    #setup-home .hero h1 { font-size: 2.5rem; }
+    
+    #setup-home .welcome-note { grid-column: 1; height: 100%; }
+    #setup-home .action-dock {
+        grid-column: 2;
+        gap: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }    
+    #setup-lobby.setup-slide.active {
+        grid-template-columns: 300px 1fr;
+        align-items: stretch;
+    }
+    .lobby-card {
+        grid-column: 1;
+        display: flex;
+        flex-direction: column;
+        text-align: center;
+        height: 100%;
+        justify-content: center;
+        padding: 30px;
+    }
+    .qr-box { width: 200px; height: 200px; margin-bottom: 20px; }
+    .role-selector { grid-column: 2; height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 30px; }
+    .role-cards.dashboard-actions { gap: 20px; }
+    .role-card { padding: 40px 20px; gap: 16px; }
+    .role-card .icon { font-size: 3rem; }
+    .role-card .text { font-size: 1.2rem; }
+
+    /* 3. Waiter View - POS Layout */
+    #view-waiter {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        grid-template-rows: 72px 1fr; /* Explicit header row */
+        grid-template-areas:
+            "header header"
+            "grid sidebar";
+        padding: 0;
+        gap: 0 24px;
+        overflow: hidden; /* Lock view, scroll internal parts */
+    }
+    
+    #view-waiter .app-header { grid-area: header; margin-bottom: 0; }
+    
+    .grid-layout {
+        grid-area: grid;
+        overflow-y: auto;
+        padding: 10px 0 40px 0;
+        align-content: start;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 16px;
+    }
+    
+    .grid-item {
+        border-radius: 16px;
+        font-size: 1.1rem;
+        box-shadow: var(--shadow-soft);
+    }
+    .grid-item:hover { transform: translateY(-3px); box-shadow: var(--shadow-elevated); }
+
+    .order-dock {
+        grid-area: sidebar;
+        position: relative;
+        inset: auto;
+        width: 100%;
+        height: 100%;
+        max-height: 100%;
+        border-radius: 24px;
+        border: 1px solid var(--border-strong);
+        background: var(--bg-surface-1);
+        box-shadow: var(--shadow-elevated);
+        display: flex;
+        flex-direction: column;
+        z-index: 20;
+        transform: none !important; /* Force reset */
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .dock-handle { display: none; }
+    
+    .dock-summary {
+        padding: 20px;
+        border-bottom: 1px solid var(--border-strong);
+        background: var(--bg-surface-2);
+        font-size: 1.1rem;
+    }
+    
+    .order-list-container {
+        padding: 16px;
+        gap: 10px;
+        overflow-y: auto;
+        /* Reset any grid hacks from JS layout engine for mobile */
+        display: flex !important; 
+        flex-direction: column !important;
+        grid-template-columns: none !important;
+        grid-auto-rows: auto !important;
+    }
+    
+    .order-item {
+        flex-direction: row;
+        align-items: center;
+        padding: 12px 16px;
+        font-size: 0.95rem;
+    }
+    .order-item .qty { font-size: 1.1rem; margin-right: 12px; min-width: 24px; }
+    .order-item-info { flex: 1; }
+    .order-item-remove { 
+        position: static; 
+        width: 28px; height: 28px; 
+        border-radius: 8px;
+        margin-left: 8px;
+        opacity: 0.6;
+    }
+    .order-item:hover .order-item-remove { opacity: 1; }
+
+    .dock-actions {
+        padding: 20px;
+        background: var(--bg-surface-1);
+        border-top: 1px solid var(--border-strong);
+    }
+    
+    .waiter-back-fab {
+        left: 20px;
+        bottom: 20px;
+        padding: 12px 20px;
+        font-size: 1rem;
+    }
+
+    /* 4. Bartender View - Grid Feed */
+    #view-bartender .feed-layout {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 24px;
+        padding: 10px 0 40px 0;
+        align-items: start;
+    }
+    
+    .feed-card {
+        border-radius: 20px;
+        padding: 20px;
+        background: var(--bg-surface-1);
+        border: 1px solid var(--border-strong);
+        transition: transform 0.2s ease;
+    }
+    .feed-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-elevated); border-color: var(--accent); }
+    
+    .feed-header { margin-bottom: 16px; font-size: 1.1rem; }
+    .feed-count { font-size: 0.9rem; padding: 4px 10px; }
+    
+    .feed-order {
+        padding: 12px;
+        border-radius: 12px;
+        gap: 10px;
+    }
+    .feed-btn {
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .feed-card:hover .feed-btn { opacity: 1; }
+
+    /* 5. Manager View - Center Column */
+    .manager-container {
+        max-width: 900px;
+        gap: 24px;
+        padding: 0;
+    }
+    
+    .config-card {
+        padding: 30px;
+    }
+    
+    /* 6. Quantity Modal - Centered Dialog */
+    .bottom-sheet {
+        top: 50%;
+        left: 50%;
+        bottom: auto;
+        transform: translate(-50%, -50%);
+        width: 480px;
+        border-radius: 24px;
+    }
+    .sheet-content {
+        border-radius: 24px;
+        box-shadow: 0 40px 80px rgba(0,0,0,0.4);
+    }
+    .qty-body { padding: 30px; gap: 24px; }
+    .qty-display { padding: 20px; }
+    .qty-value { font-size: 3rem; }
+    .qty-step { width: 56px; height: 56px; font-size: 1.5rem; }
+}
+
+@media (min-width: 1400px) {
+    #setup-home.setup-slide.active,
+    #setup-lobby.setup-slide.active {
+        margin-top: 10vh;
+        transform: scale(1.05);
+    }
 }

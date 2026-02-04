@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/css/fontawesome/css/all.min.css">
     <script>
         // Bump this string to bust caches across all assets and the service worker.
-        window.__APP_VERSION__ = "030226_" + '0.0.3';
+        window.__APP_VERSION__ = "040226_" + '1.0.0';
         //window.__APP_VERSION__ = Math.round(Math.random()*1000000)
         window.__ASSET_SUFFIX__ = `?v=${window.__APP_VERSION__}`;
         document.documentElement.dataset.version = window.__APP_VERSION__;
@@ -220,7 +220,7 @@
         <!-- VIEW 2: WAITER -->
         <section id="view-waiter" class="view">
             <header class="app-header">
-                <button id="waiter-exit-btn" class="icon-btn" aria-label="Exit">←</button>
+                <button id="waiter-exit-btn" class="icon-btn" aria-label="Exit">X</button>
                 <div class="header-titles">
                     <div class="breadcrumbs" id="waiter-breadcrumbs">Tables</div>
                 </div>
@@ -277,7 +277,7 @@
                         <h3 id="qty-item-title">Item</h3>
                         <div id="qty-item-path" class="pill ghost small hidden"></div>
                     </div>
-                    <button id="btn-close-qty" class="icon-btn">✕</button>
+                    <button id="btn-close-qty" class="icon-btn"> <i class="fas fa-arrow-left"></i></button>
                 </div>
                 <div class="qty-body">
                     <div class="qty-display">
@@ -299,7 +299,7 @@
         <!-- VIEW 3: BARTENDER -->
         <section id="view-bartender" class="view">
             <header class="app-header">
-                <button id="bartender-back-btn" class="icon-btn" aria-label="Back">←</button>
+                <button id="bartender-back-btn" class="icon-btn" aria-label="Back">X</button>
                 <div class="header-titles">
                     <span class="main" data-i18n="bartender.incoming">Incoming Orders</span>
                 </div>
