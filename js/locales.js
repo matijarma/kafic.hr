@@ -14,7 +14,9 @@ export const locales = {
             peers_connected: "{count} active",
             connected_short: "Online",
             waiting_short: "Idle",
-            share_title: "Invite Staff"
+            share_title: "Invite Staff",
+            lijevo: "L",
+            desno: "R"
         },
         roles: { waiter: "Waiter", bartender: "Bartender" },
         waiter: {
@@ -77,7 +79,8 @@ export const locales = {
         },
         footer: {
             privacy: "100% Private & Open Source",
-            credit: "Created by Matija Radeljak"
+            credit: "Created by Matija Radeljak",
+            privpolicy: "Privacy policy"
         }
     },
     hr: {
@@ -95,7 +98,9 @@ export const locales = {
             peers_connected: "{count} na vezi",
             connected_short: "Spojen",
             waiting_short: "Tražim",
-            share_title: "Dodaj uređaj"
+            share_title: "Dodaj uređaj",
+            lijevo: "L",
+            desno: "D"
         },
         roles: { waiter: "Konobar", bartender: "Šank" },
         waiter: {
@@ -158,7 +163,8 @@ export const locales = {
         },
         footer: {
             privacy: "Privatno i otvorenog koda",
-            credit: "Aning Film d.o.o."
+            credit: "Aning Film d.o.o.",
+            privpolicy: "Politika privatnosti"
         }
     }
 };

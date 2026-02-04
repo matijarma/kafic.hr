@@ -62,8 +62,8 @@ function render() {
                     <label class="fancy-switch" aria-label="${t('settings.handed')}">
                         <input type="checkbox" id="tog-hand">
                         <span class="switch-track">
-                            <span class="switch-icon left">L</span>
-                            <span class="switch-icon right">R</span>
+                            <span class="switch-icon left" data-i18n="setup.lijevo">L</span>
+                            <span class="switch-icon right" data-i18n="setup.desno">D</span>
                             <span class="switch-thumb"></span>
                         </span>
                     </label>
