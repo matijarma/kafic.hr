@@ -1,7 +1,7 @@
 export const locales = {
     en: {
-        app: { tagline: "Sync Your Bar", subline: "Real-time order management" },
-        settings: { title: "Settings", theme: "Theme", lang: "Language", reset: "Factory Reset", handed: "Hand", left: "Left", right: "Right" },
+        app: { tagline: "Kafić.hr", subline: "Real-time order management" },
+        settings: { title: "Settings", theme: "Theme", lang: "Language", reset: "Factory Reset", handed: "Hand", left: "Left", right: "Right" , on: "ON" , off: "OFF" , solomode: "Solo mode"},
         setup: {
             host: "Start Session", join: "Join Session", resume: "Reconnect",
             join_title: "Enter Code", lobby: "Connection Hub",
@@ -85,11 +85,11 @@ export const locales = {
     },
     hr: {
         app: { tagline: "Kafić.hr", subline: "Usklađivanje narudžbi" },
-        settings: { title: "Postavke", theme: "Tema", lang: "Jezik", reset: "Izbriši podatke", handed: "Ruka", left: "Lijeva", right: "Desna" },
+        settings: { title: "Postavke", theme: "Tema", lang: "Jezik", reset: "Izbriši podatke", handed: "Ruka", left: "Lijeva", right: "Desna" , on: "DA" , off: "NE" , solomode: "Solo način"},
         setup: {
             host: "Pokreni smjenu", join: "Pridruži se", resume: "Nastavi",
             join_title: "Prijava", lobby: "Povezivanje",
-            label_name: "Ime uređaja", select_role: "Radno mjesto",
+            label_name: "Naziv", select_role: "Radno mjesto",
             scan_hint: "Skeniraj QR", no_peers: "Čekanje kolega...",
             join_hint: "Unesi kod s glavnog uređaja.",
             connecting: "Uspostava veze...",

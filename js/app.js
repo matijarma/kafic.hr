@@ -1,8 +1,8 @@
 import { initNetwork, broadcast } from 'network';
 import { state, resetWaiterState } from 'state';
 import { generateJoinCode, roomIdFromCode, saveSession, loadSession, clearSavedSession, syncStateToSession } from 'session';
-import { initWaiter, refreshWaiter } from 'waiter';
-import { initBartender, onOrderReceived } from 'bartender';
+import { initWaiter, refreshWaiter, onOrderCompleted } from 'waiter';
+import { initBartender, onOrderReceived, setOrderCompletionHandler } from 'bartender';
 import { initManager } from 'manager';
 import { renderQR } from 'qr';
 import { initI18n, t, setLanguage, getLanguage, updateDOM } from 'i18n';
@@ -64,6 +64,11 @@ const bartenderBackBtn = document.getElementById('bartender-back-btn');
 const scanOverlay = document.getElementById('scan-overlay');
 const scanVideo = document.getElementById('scan-video');
 const btnCloseScan = document.getElementById('btn-close-scan');
+
+// Connection Indicator (Header)
+const headerConn = document.getElementById('header-conn');
+const arrowLeft = document.getElementById('arrow-left');
+const arrowRight = document.getElementById('arrow-right');
 
 const APP_VERSION = document.documentElement.dataset.version || window.__APP_VERSION__ || 'dev';
 let stopScan = null;
@@ -127,6 +132,16 @@ bootstrap();
 
 function bootstrap() {
     setBodyView('setup');
+    
+    // Bind Bartender Completion to Logic (Local + Network)
+    setOrderCompletionHandler((tableId) => {
+        // 1. Local update (clears indicator immediately on this device)
+        onOrderCompleted({ tableId });
+        
+        // 2. Network update (informs other peers)
+        broadcast({ type: 'order-completed', tableId });
+    });
+
     // 1. I18n
     const savedLang = localStorage.getItem('barlink_lang') || 'hr';
     initI18n(savedLang);
@@ -167,6 +182,9 @@ function bootstrap() {
     }
     syncUsernameWidth();
     
+    // Solo Mode Load
+    state.soloMode = localStorage.getItem('barlink_solo') === '1';
+
     // 5. Session Check
     const session = loadSession();
     if (session && session.sessionCode) {
@@ -303,6 +321,8 @@ function setupEvents() {
     bartenderBackBtn.onclick = () => returnToLobby();
     // Expose global return for waiter navigation
     window.returnToLobby = returnToLobby;
+
+    setupSwipe();
 }
 
 async function syncJoinControls() {
@@ -330,25 +350,9 @@ function setJoinStatus(msg, type = '') {
     joinStatus.className = `status-line${type ? ' ' + type : ''}`;
 }
 
-function setLobbyStatus(msg, type = '') {
-    if (!peerCountLabel) return;
-    peerCountLabel.textContent = msg || '';
-    const container = peerCountLabel.closest('.peers-indicator');
-    if (container) {
-        container.classList.remove('connected', 'error');
-        if (type === 'success') container.classList.add('connected');
-        if (type === 'error') container.classList.add('error');
-    }
-}
-
-function setNetIndicator(text, status = '') {
-    const netPill = document.getElementById('waiter-net-pill');
-    if (!netPill) return;
-    const label = netPill.querySelector('.label');
-    if (label) label.textContent = text || '';
-    netPill.classList.toggle('connected', status === 'connected');
-    netPill.classList.toggle('offline', status === 'offline');
-}
+// Redirect old helpers to new UI
+function setLobbyStatus(msg, type) { /* No-op or log */ }
+function setNetIndicator(text, status) { /* No-op */ }
 
 function focusJoinInput() {
     setTimeout(() => joinInput?.focus(), 60);
@@ -358,12 +362,7 @@ function bindConnectivity() {
     const refresh = () => {
         const online = navigator.onLine;
         offlinePill?.classList.toggle('hidden', online);
-        if (!online) setLobbyStatus(t('alerts.offline'), 'error');
-        if (!online) {
-            setNetIndicator(t('alerts.offline'), 'offline');
-        } else {
-            setNetIndicator(t('setup.waiting_short'), '');
-        }
+        // headerConn will be updated via updatePeerUI
     };
     window.addEventListener('online', () => {
         toast(t('alerts.back_online'), 'success');
@@ -373,6 +372,7 @@ function bindConnectivity() {
     window.addEventListener('offline', () => {
         toast(t('alerts.offline'), 'error');
         refresh();
+        updatePeerUI();
     });
     refresh();
 }
@@ -406,10 +406,14 @@ function setupInstallPrompt() {
 // --- FLOWS ---
 
 function goToView(viewId, push = true) {
-    Object.values(views).forEach(el => el.classList.remove('active'));
+    // Standard switch (no animation)
+    Object.values(views).forEach(el => {
+        el.classList.remove('active', 'slide-out-left', 'slide-in-right', 'slide-out-right', 'slide-in-left');
+    });
     views[viewId].classList.add('active');
     setBodyView(viewId);
     if (push) history.pushState({ view: viewId }, '');
+    checkArrows();
 }
 
 function goToSlide(slideId, push = true) {
@@ -429,7 +433,7 @@ async function startHost() {
     const code = generateJoinCode();
     initSessionState(code, true);
     await setupLobbyUI();
-    setLobbyStatus(t('setup.connecting'), 'info');
+    // setLobbyStatus(t('setup.connecting'), 'info');
     goToSlide('lobby');
     connectNetwork();
 }
@@ -451,7 +455,7 @@ async function joinSession() {
     resetWaiterState();
     state.barOrders = [];
     setJoinStatus(t('setup.connecting'), 'success');
-    setLobbyStatus(t('setup.connecting'), 'info');
+    // setLobbyStatus(t('setup.connecting'), 'info');
     initSessionState(code, false);
     await setupLobbyUI();
     goToSlide('lobby');
@@ -465,7 +469,7 @@ async function resumeFlow(session) {
     resetWaiterState();
     hasNetwork = false;
     setJoinStatus('');
-    setLobbyStatus(t('setup.resuming'), 'info');
+    // setLobbyStatus(t('setup.resuming'), 'info');
 
     let sessionData = session;
     
@@ -484,13 +488,17 @@ function returnToLobby() {
     state.role = null;
     resetWaiterState();
     persist();
-    setLobbyStatus(t('setup.no_peers'), 'info');
+    // setLobbyStatus(t('setup.no_peers'), 'info');
     
     // Go to setup/lobby
     Object.values(views).forEach(el => el.classList.remove('active'));
     views.setup.classList.add('active');
     setBodyView('setup');
     goToSlide('lobby');
+    
+    // Remove arrows if returning to lobby
+    if (arrowLeft) arrowLeft.classList.remove('visible');
+    if (arrowRight) arrowRight.classList.remove('visible');
 }
 
 function initSessionState(code, isHost) {
@@ -520,7 +528,7 @@ async function setupLobbyUI() {
     if (!rendered) {
         renderQR(qrCanvas, qrUrl, 180);
     }
-    setLobbyStatus(t('setup.no_peers'), 'info');
+    // setLobbyStatus(t('setup.no_peers'), 'info');
     updatePeerUI();
 }
 
@@ -548,11 +556,11 @@ function connectNetwork(restoredSession = null) {
     if (hasNetwork) return;
     if (!state.roomId || !state.sessionCode) {
         toast(t('alerts.no_session'), 'error');
-        setLobbyStatus(t('alerts.no_session'), 'error');
+        // setLobbyStatus(t('alerts.no_session'), 'error');
         return;
     }
     hasNetwork = true;
-    setLobbyStatus(t('setup.connecting'), 'info');
+    // setLobbyStatus(t('setup.connecting'), 'info');
     
     try {
         const sessionData = restoredSession || loadSession();
@@ -563,6 +571,9 @@ function connectNetwork(restoredSession = null) {
             }
             if (data.type === 'new-order') {
                 onOrderReceived(data);
+            }
+            if (data.type === 'order-completed') {
+                onOrderCompleted(data);
             }
         }, (status) => {
             if (status.type === 'leave' && status.peerId) delete state.peers[status.peerId];
@@ -578,13 +589,13 @@ function connectNetwork(restoredSession = null) {
                 announceSelf(status.peerId);
             }
             if (status.type === 'error') {
-                setLobbyStatus(t('alerts.network_error'), 'error');
+                // setLobbyStatus(t('alerts.network_error'), 'error');
                 toast(t('alerts.network_error'), 'error');
             }
         }, sessionData);
     } catch (e) {
         hasNetwork = false;
-        setLobbyStatus(t('alerts.network_error'), 'error');
+        // setLobbyStatus(t('alerts.network_error'), 'error');
         toast(t('alerts.network_error'), 'error');
         return;
     }
@@ -602,16 +613,36 @@ function announceSelf(targetId) {
 }
 
 function updatePeerUI() {
-    if (!navigator.onLine) return;
-    const count = Object.keys(state.peers).length; 
-    const peersText = count === 0 ? t('setup.no_peers') : t('setup.peers_connected', { count });
+    const count = Object.keys(state.peers).length;
+    const online = navigator.onLine;
     
-    setLobbyStatus(peersText, count > 0 ? 'success' : '');
-
-    setNetIndicator(
-        count > 0 ? `${t('setup.connected_short')} • ${count}` : t('setup.waiting_short'),
-        count > 0 ? 'connected' : ''
-    );
+    if (headerConn) {
+        const dot = headerConn.querySelector('.dot');
+        const countLabel = headerConn.querySelector('.count');
+        
+        if (!online) {
+            headerConn.classList.add('error');
+            headerConn.classList.remove('active');
+            if(countLabel) countLabel.textContent = 'Offline';
+        } else if (count > 0) {
+            headerConn.classList.add('active');
+            headerConn.classList.remove('error');
+            if(countLabel) countLabel.textContent = `${count} Peer${count > 1 ? 's' : ''}`;
+        } else {
+            headerConn.classList.remove('active', 'error');
+            if(countLabel) countLabel.textContent = 'Waiting...';
+        }
+        
+        // Click handler for details (simple toast for now)
+        headerConn.onclick = () => {
+            if (!online) toast(t('alerts.offline'), 'error');
+            else if (count === 0) toast(t('setup.no_peers'), 'info');
+            else {
+                const names = Object.values(state.peers).map(p => p.name || 'Unknown').join(', ');
+                toast(`${t('setup.connected_short')}: ${names}`, 'success');
+            }
+        };
+    }
 }
 
 function persist() {
@@ -623,6 +654,121 @@ function persist() {
         role: state.role
     });
 }
+
+// --- SWIPE LOGIC ---
+let touchStartX = 0;
+let touchStartY = 0;
+
+function setupSwipe() {
+    window.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    window.addEventListener('touchend', e => {
+        if (!state.soloMode) return;
+        
+        const touchEndX = e.changedTouches[0].screenX;
+        const touchEndY = e.changedTouches[0].screenY;
+        
+        const xDiff = touchEndX - touchStartX;
+        const yDiff = touchEndY - touchStartY;
+        
+        // Ignore vertical scrolls
+        if (Math.abs(yDiff) > Math.abs(xDiff)) return;
+        
+        // Threshold
+        if (Math.abs(xDiff) > 80) {
+            handleSwipe(xDiff > 0 ? 'right' : 'left');
+        }
+    }, { passive: true });
+}
+
+function handleSwipe(direction) {
+    const currentView = document.body.dataset.view;
+    if (currentView !== 'waiter' && currentView !== 'bartender') return;
+
+    // Hide arrows if visible
+    if (arrowLeft) arrowLeft.classList.remove('visible');
+    if (arrowRight) arrowRight.classList.remove('visible');
+    localStorage.setItem('barlink_saw_arrows', '1');
+
+    // Logic: Infinite Scroll
+    let target = '';
+    let animClassOut = '';
+    let animClassIn = '';
+
+    if (currentView === 'waiter') {
+        if (direction === 'left') {
+            // Dragging left, go to right (Bartender)
+            target = 'bartender';
+            animClassOut = 'slide-out-left';
+            animClassIn = 'slide-in-right';
+        } else {
+            // Dragging right, wrap around to Bartender? Or stay?
+            // "Infinite" suggests wrapping.
+            target = 'bartender';
+            animClassOut = 'slide-out-right';
+            animClassIn = 'slide-in-left';
+        }
+    } else if (currentView === 'bartender') {
+        if (direction === 'right') {
+            // Dragging right, go to left (Waiter)
+            target = 'waiter';
+            animClassOut = 'slide-out-right';
+            animClassIn = 'slide-in-left';
+        } else {
+            // Dragging left, wrap around to Waiter
+            target = 'waiter';
+            animClassOut = 'slide-out-left';
+            animClassIn = 'slide-in-right';
+        }
+    }
+
+    if (target) {
+        animateViewSwitch(currentView, target, animClassOut, animClassIn);
+    }
+}
+
+function animateViewSwitch(fromId, toId, outClass, inClass) {
+    const fromEl = views[fromId];
+    const toEl = views[toId];
+    
+    fromEl.classList.add(outClass);
+    toEl.classList.add(inClass);
+    toEl.classList.add('active'); // Make visible immediately for transition
+    setBodyView(toId);
+
+    // Init Logic
+    if (toId === 'waiter') {
+        if (!waiterStarted) { initWaiter(); waiterStarted = true; }
+        else refreshWaiter();
+    } else if (toId === 'bartender') {
+        if (!bartenderStarted) { initBartender(); bartenderStarted = true; }
+    }
+
+    // Cleanup after animation
+    setTimeout(() => {
+        fromEl.classList.remove('active', outClass);
+        toEl.classList.remove(inClass);
+    }, 250); // Match CSS duration
+}
+
+function checkArrows() {
+    if (state.soloMode && localStorage.getItem('barlink_saw_arrows') !== '1') {
+        const currentView = document.body.dataset.view;
+        if (currentView === 'waiter' || currentView === 'bartender') {
+            if (arrowLeft) arrowLeft.classList.add('visible');
+            if (arrowRight) arrowRight.classList.add('visible');
+        }
+    } else {
+        if (arrowLeft) arrowLeft.classList.remove('visible');
+        if (arrowRight) arrowRight.classList.remove('visible');
+    }
+}
+
+// Hook into navigation
+window.addEventListener('nav-view', () => checkArrows()); // Custom event if needed, or check in goToView
 
 // --- THEME & LANG CYCLE ---
 function cycleTheme() {

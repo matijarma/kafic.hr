@@ -8,13 +8,16 @@ export const state = {
     currentTable: null,
     currentPath: [], // Array of menu objects (breadcrumbs)
     currentOrder: [], // Items pending send
-    barOrders: [] // List of received orders
+    barOrders: [], // List of received orders
+    unclearedTables: new Set(), // Set of tableIds that have pending orders
+    soloMode: false // New solo mode toggle
 };
 
 export const resetWaiterState = () => {
     state.currentTable = null;
     state.currentPath = []; // Back to root
     state.currentOrder = [];
+    // We do NOT reset unclearedTables here, as that persists across table selection
 };
 
 export const clearRuntimeState = () => {
@@ -25,5 +28,7 @@ export const clearRuntimeState = () => {
     state.workerName = '';
     state.peers = {};
     state.barOrders = [];
+    state.unclearedTables = new Set();
+    state.soloMode = false;
     resetWaiterState();
 };

@@ -3,6 +3,7 @@ import { toast } from 'ux';
 
 const feed = document.getElementById('bartender-feed');
 const tableCards = new Map();
+let onComplete = () => {};
 
 // Sound
 let ctx = null;
@@ -14,6 +15,10 @@ try {
 
 export const initBartender = () => {
     render();
+};
+
+export const setOrderCompletionHandler = (fn) => {
+    onComplete = fn;
 };
 
 export const onOrderReceived = (data) => {
@@ -85,6 +90,9 @@ const addOrderToCard = (card, data) => {
             orderEl.remove();
             updateTableCount(card);
             if (card.ordersEl.children.length === 0) {
+                // Table is fully cleared
+                onComplete(card.tableId);
+                
                 card.el.remove();
                 tableCards.delete(card.tableId);
                 checkEmpty();

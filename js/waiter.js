@@ -273,6 +273,9 @@ const renderTables = () => {
     tables.forEach(tbl => {
         const el = document.createElement('button');
         el.className = 'grid-item';
+        if (state.unclearedTables.has(tbl.id)) {
+            el.classList.add('has-orders');
+        }
         el.innerHTML = `<div style="font-size:1.8em">${tbl.id}</div>`;
         el.onclick = () => {
             state.currentTable = tbl;
@@ -449,6 +452,7 @@ const sendOrder = () => {
     onOrderReceived(payload);
     
     // 3. Feedback
+    state.unclearedTables.add(state.currentTable.id);
     toast(t('alerts.order_sent'), 'success');
     resetWaiterState();
     render();
@@ -459,6 +463,15 @@ const handleTables = () => {
     state.currentTable = null;
     state.currentPath = [];
     render();
+};
+
+export const onOrderCompleted = (data) => {
+    if (data && data.tableId) {
+        state.unclearedTables.delete(data.tableId);
+        if (!state.currentTable) {
+            renderTables();
+        }
+    }
 };
 
 export const refreshWaiter = render;

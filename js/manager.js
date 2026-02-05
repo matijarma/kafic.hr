@@ -2,6 +2,7 @@ import { getTableCount, setTableCount, getMenu, saveMenu } from 'data';
 import { saveImage, deleteImage, getImage } from 'db';
 import { t } from 'i18n';
 import { toast, confirm } from 'ux';
+import { state } from 'state';
 
 let container = null;
 let activePopover = null;
@@ -56,6 +57,23 @@ function render() {
             </header>
 
             <div class="config-card compact-row">
+                <!-- Solo Mode Toggle -->
+                
+                <div class="v-sep"></div>
+                <div class="control-group shrink">
+                    <label class="section-label" data-i18n="settings.solomode">Solo Mode</label>
+                    <label class="fancy-switch" aria-label="Solo Mode">
+                        <input type="checkbox" id="tog-solo">
+                        <span class="switch-track">
+                            <span class="switch-icon left" data-i18n="settings.on"><i class="fas fa-check-circle"></i></span>
+                            <span class="switch-icon right"><i class="fas fa-power-off"></i></span>
+                            <span class="switch-thumb"></span>
+                        </span>
+                    </label>
+                </div>
+            
+                <div class="v-sep"></div>
+
                 <!-- Hand Toggle -->
                 <div class="control-group shrink">
                     <label class="section-label">${t('settings.handed')}</label>
@@ -104,6 +122,16 @@ function render() {
     const inpSlider = container.querySelector('#inp-table-count');
     const dispCount = container.querySelector('#disp-count');
     const togHand = container.querySelector('#tog-hand');
+    const togSolo = container.querySelector('#tog-solo');
+
+    // Solo Logic
+    togSolo.checked = state.soloMode;
+    togSolo.onchange = () => {
+        state.soloMode = togSolo.checked;
+        localStorage.setItem('barlink_solo', state.soloMode ? '1' : '0');
+        // If we just enabled solo mode, ensure we broadcast locally
+        // (Wait, this is handled by the app logic consuming state.soloMode)
+    };
 
     // Hand Logic
     const savedHand = localStorage.getItem('barlink_hand') || 'right';

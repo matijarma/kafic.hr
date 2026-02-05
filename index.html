@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/css/fontawesome/css/all.min.css">
     <script>
         // Bump this string to bust caches across all assets and the service worker.
-        //window.__APP_VERSION__ = "0402260_" + '1.0.1';
+        //window.__APP_VERSION__ = "0502260_" + '1.0.2';
         window.__APP_VERSION__ = Math.round(Math.random()*1000000)
         window.__ASSET_SUFFIX__ = `?v=${window.__APP_VERSION__}`;
         document.documentElement.dataset.version = window.__APP_VERSION__;
@@ -100,70 +100,67 @@
                     <input type="text" id="header-username" class="editable-label" placeholder="Your Name" aria-label="Username" data-i18n="setup.label_name">
                 </div>
                 <div class="header-right">
+                    <button id="header-conn" class="header-conn-indicator" aria-label="Connection Status">
+                        <span class="dot"></span>
+                        <span class="count"></span>
+                    </button>
                     <button id="btn-toggle-theme" class="icon-btn small" aria-label="Toggle Theme">◐</button>
                     <button id="btn-toggle-lang" class="icon-btn small" aria-label="Toggle Language"></button>
                 </div>
             </header>
 
-            <!-- Slide 1: Welcome -->
+            <!-- Slide 1: Welcome (Redesigned) -->
             <div id="setup-home" class="setup-slide active">
-                <div class="hero">
-                    <div style="display: flex;flex-direction: row;align-items: center;gap: 12px;">
-                        <img src="/images/kafichr-logo-alpha-512.png" style="width: 12vw;height: 12vw;">
-                        <div>
-                            <h1 data-i18n="app.tagline">Sync Your Bar</h1>
-                            <p data-i18n="app.subline">Instant order management.</p>
-                        </div>
+                <div class="home-layout">
+                    <div class="hero-section">
+                        <img src="/images/kafichr-logo-alpha-512.png" class="hero-logo" alt="Logo">
+                        <h1 class="hero-title" data-i18n="app.tagline">Sync Your Bar</h1>
+                        <p class="hero-subtitle" data-i18n="app.subline">Instant order management.</p>
                     </div>
-                    <div class="meta-row">
-                        <span class="pill ghost hidden" id="offline-pill">Offline</span>
-                        <button id="btn-install-app" class="pill action hidden" data-i18n="actions.install">Install app</button>
-                    </div>
-                </div>
 
-                <details class="welcome-note" id="welcome-note" open>
-                    <summary>
-                        <span class="welcome-title" data-i18n="welcome.title">Quick start</span>
-                        <span class="welcome-toggle" aria-hidden="true"></span>
-                    </summary>
-                    <div class="welcome-grid">
-                        <div class="welcome-step">
-                            <span class="step-icon"><i class="fas fa-play-circle"></i></span>
-                            <span data-i18n="welcome.step1">Host a session to create a 6-letter code.</span>
+                    <div id="resume-dock" class="resume-card hidden">
+                        <div class="resume-content">
+                            <span class="dot-pulse"></span>
+                            <div class="resume-text">
+                                <span class="label" data-i18n="setup.resume">Resume Session</span>
+                                <code id="resume-code-display" class="code">----</code>
+                            </div>
                         </div>
-                        <div class="welcome-step">
-                            <span class="step-icon"><i class="fas fa-qrcode"></i></span>
-                            <span data-i18n="welcome.step2">Join from another device or scan the QR.</span>
-                        </div>
-                        <div class="welcome-step">
-                            <span class="step-icon"><i class="fas fa-user"></i></span>
-                            <span data-i18n="welcome.step3">Pick Waiter or Bartender and start serving.</span>
-                        </div>
-                        <div class="welcome-step">
-                            <span class="step-icon"><i class="fas fa-wifi"></i></span>
-                            <span data-i18n="welcome.step4">Tip: Works offline once connected.</span>
-                        </div>
+                        <button id="btn-resume" class="btn-resume-arrow" aria-label="Resume">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
                     </div>
-                </details>
-                
-                <div class="action-dock">
-                    <button id="btn-host" class="big-btn primary" data-i18n="setup.host">
-                        <span>+</span> Host Session
-                    </button>
-                    <button id="btn-join" class="big-btn secondary" data-i18n="setup.join">
-                        <span>→</span> Join Session
-                    </button>
-                    <!-- Resume Pill -->
-                    <div id="resume-dock" class="resume-dock hidden">
-                        <button id="btn-resume" class="resume-pill">
-                            <span class="dot"></span>
-                            <span data-i18n="setup.resume">Resume</span>
-                            <code id="resume-code-display">ABCD</code>
+
+                    <div class="home-actions">
+                        <button id="btn-host" class="action-card primary">
+                            <div class="icon-circle"><i class="fas fa-plus"></i></div>
+                            <div class="card-text">
+                                <span class="card-title" data-i18n="setup.host">Host Session</span>
+                                <span class="card-desc" data-i18n="setup.lobby">Start a new team</span>
+                            </div>
+                        </button>
+                        
+                        <button id="btn-join" class="action-card secondary">
+                            <div class="icon-circle"><i class="fas fa-qrcode"></i></div>
+                            <div class="card-text">
+                                <span class="card-title" data-i18n="setup.join">Join Session</span>
+                                <span class="card-desc" data-i18n="setup.join_title">Connect to existing</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="home-footer-actions">
+                        <button id="btn-install-app" class="pill action hidden">
+                            <i class="fas fa-download"></i> <span data-i18n="actions.install">Install App</span>
+                        </button>
+                        <button id="btn-reset-app" class="text-link-danger">
+                            <i class="fas fa-trash"></i> <span data-i18n="settings.reset">Reset App</span>
                         </button>
                     </div>
                 </div>
-
-                <button id="btn-reset-app" class="corner-trash" aria-label="Reset App">🗑</button>
+                
+                <!-- Hidden Welcome Note -->
+                <div id="welcome-note" class="hidden"></div>
             </div>
 
             <!-- Slide 2: Join Input -->
@@ -200,10 +197,6 @@
                                 <span class="text" data-i18n="actions.copy_link">Copy Link</span>
                             </button>
                         </div>
-                    </div>
-                    <div class="peers-indicator">
-                        <span class="status-dot"></span>
-                        <span id="peer-count-label">Waiting for peers...</span>
                     </div>
                 </div>
 
@@ -341,6 +334,10 @@
 
     <!-- Toast Container -->
     <div id="toast-container"></div>
+
+    <!-- Swipe Arrows -->
+    <div id="arrow-left" class="swipe-arrow left"><i class="fas fa-chevron-left"></i></div>
+    <div id="arrow-right" class="swipe-arrow right"><i class="fas fa-chevron-right"></i></div>
 
     <footer class="app-footer" id="app-footer" aria-label="App footer">
         <div class="footer-text">
