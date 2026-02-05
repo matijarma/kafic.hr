@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/css/fontawesome/css/all.min.css">
     <script>
         // Bump this string to bust caches across all assets and the service worker.
-        //window.__APP_VERSION__ = "0402260_" + '1.0.012';
+        //window.__APP_VERSION__ = "0402260_" + '1.0.1';
         window.__APP_VERSION__ = Math.round(Math.random()*1000000)
         window.__ASSET_SUFFIX__ = `?v=${window.__APP_VERSION__}`;
         document.documentElement.dataset.version = window.__APP_VERSION__;
@@ -76,6 +76,15 @@
             document.head.appendChild(mapEl);
         })();
     </script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y3F91QWMRD"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-Y3F91QWMRD');
+    </script>
 </head>
 <body>
 
@@ -87,7 +96,7 @@
             <!-- Global Top Bar for Setup -->
             <header class="app-header">
                 <div class="header-left">
-                    <button id="logo-home" class="" aria-label="Close session"><img src="/images/kafichr-logo-circle-alpha-256.png" style="width: 3vh;"></button>
+                    <button id="logo-home" class="" aria-label="Close session"><a href="/"><img src="/images/kafichr-logo-circle-alpha-256.png" style="width: 3vh;"></a></button>
                     <input type="text" id="header-username" class="editable-label" placeholder="Your Name" aria-label="Username" data-i18n="setup.label_name">
                 </div>
                 <div class="header-right">
@@ -166,7 +175,7 @@
                 <div class="center-content">
                     <p class="helper-text" id="join-hint" aria-live="polite" data-i18n="setup.join_hint">Enter the 6-letter code from the host.</p>
                     <div class="code-input-group">
-                        <input type="text" id="join-code-input" maxlength="6" placeholder="______" inputmode="latin-prose" autocomplete="off" autocapitalize="characters" aria-describedby="join-hint">
+                        <input type="text" id="join-code-input" placeholder="______" inputmode="latin-prose" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-describedby="join-hint">
                         <div class="input-tools">
                             <button id="btn-scan" aria-label="Scan QR">📷</button>
                             <button id="btn-paste" aria-label="Paste">📋</button>

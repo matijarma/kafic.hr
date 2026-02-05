@@ -89,18 +89,38 @@ const syncUsernameWidth = () => {
 };
 
 function formatJoinCode(val = '') {
-    if (!val) return '';
-    try {
-        // If a full URL is pasted, pull ?join=
-        const maybeUrl = new URL(val);
-        const joinParam = maybeUrl.searchParams.get('join');
-        if (joinParam) val = joinParam;
-    } catch (e) {
-        const match = val.match(/join=([A-Za-z0-9]+)/i);
-        if (match) val = match[1];
-    }
     return val.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase();
 }
+
+const extractJoinTokens = (raw = '') => {
+    const trimmed = raw.trim();
+    if (!trimmed) return { raw: '' };
+    try {
+        const maybeUrl = new URL(trimmed);
+        const joinParam = maybeUrl.searchParams.get('join');
+        if (joinParam) return { raw: trimmed, join: joinParam };
+        const shortPath = maybeUrl.pathname.match(/\/n\/([A-Za-z0-9]{6})/i);
+        if (shortPath) return { raw: trimmed, join: shortPath[1] };
+    } catch (e) {}
+
+    const joinMatch = trimmed.match(/join=([A-Za-z0-9]+)/i);
+    if (joinMatch) return { raw: trimmed, join: joinMatch[1] };
+
+    const shortPathMatch = trimmed.match(/(?:^|\/)n\/([A-Za-z0-9]{6})/i);
+    if (shortPathMatch) return { raw: trimmed, join: shortPathMatch[1] };
+
+    if (/^[A-Za-z0-9]{1,6}$/.test(trimmed)) return { raw: trimmed, join: trimmed };
+    return { raw: trimmed };
+};
+
+const QR_HOST = 'https://kafić.hr';
+const buildQrUrl = () => `${QR_HOST}/?join=${state.sessionCode}`;
+
+const buildShareUrl = async () => {
+    const origin = window.location.origin;
+    const path = window.location.pathname;
+    return `${origin}${path}?join=${state.sessionCode}`;
+};
 
 // --- BOOTSTRAP ---
 bootstrap();
@@ -170,13 +190,20 @@ function bootstrap() {
     // 7. URL Join
     const params = new URLSearchParams(window.location.search);
     const joinCode = params.get('join');
-    if (joinCode) {
-        params.delete('join');
+    const pathMatch = window.location.pathname.match(/\/n\/([A-Za-z0-9]{6})/i);
+    const shortCode = pathMatch ? pathMatch[1] : '';
+    if (joinCode || shortCode) {
+        if (joinCode) params.delete('join');
         const cleanQuery = params.toString();
-        const cleanUrl = `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${window.location.hash || ''}`;
+        const cleanPath = shortCode ? '/' : window.location.pathname;
+        const cleanUrl = `${cleanPath}${cleanQuery ? `?${cleanQuery}` : ''}${window.location.hash || ''}`;
         history.replaceState(history.state, '', cleanUrl);
         goToSlide('join');
-        joinInput.value = formatJoinCode(joinCode);
+        if (shortCode) {
+            joinInput.value = formatJoinCode(shortCode);
+        } else {
+            joinInput.value = formatJoinCode(joinCode);
+        }
         syncJoinControls();
         focusJoinInput();
     }
@@ -207,32 +234,28 @@ function setupEvents() {
         }
     };
 
-    if (logoHome) {
-        logoHome.onclick = async () => {
-            if (state.sessionCode) {
-                if (await confirmModal(t('confirm.leave_session'))) {
-                    clearSavedSession();
-                    window.location.reload();
-                }
-            } else {
-                goToSlide('home');
-            }
-        };
-    }
-
     document.querySelectorAll('.nav-back-btn').forEach(b => b.onclick = () => history.back());
     
     // Join
+    if (joinInput) joinInput.removeAttribute('maxlength');
     joinInput.addEventListener('input', syncJoinControls);
     joinInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !btnConfirmJoin.disabled) joinSession();
+    });
+    joinInput.addEventListener('paste', (e) => {
+        const text = e.clipboardData?.getData('text');
+        if (text) {
+            e.preventDefault();
+            joinInput.value = text.trim();
+            syncJoinControls();
+        }
     });
     btnConfirmJoin.onclick = joinSession;
     btnPaste.onclick = async () => {
         try {
             const txt = await navigator.clipboard.readText();
             if (txt) {
-                joinInput.value = txt.trim().toUpperCase();
+                joinInput.value = txt.trim();
                 syncJoinControls();
             }
         } catch(e) { toast(t('alerts.paste_failed'), 'error'); }
@@ -260,7 +283,7 @@ function setupEvents() {
             toast(t('alerts.no_session'), 'error');
             return;
         }
-        const url = `${window.location.origin}${window.location.pathname}?join=${state.sessionCode}`;
+        const url = await buildShareUrl();
         try {
             await navigator.clipboard.writeText(url);
             if (navigator.share) {
@@ -282,8 +305,19 @@ function setupEvents() {
     window.returnToLobby = returnToLobby;
 }
 
-function syncJoinControls() {
-    const formatted = formatJoinCode(joinInput.value);
+async function syncJoinControls() {
+    const raw = joinInput.value.trim();
+    const { join } = extractJoinTokens(raw);
+
+    if (!join) {
+        btnConfirmJoin.disabled = true;
+        setJoinStatus(t('setup.join_hint'));
+        return;
+    }
+
+    const formatted = formatJoinCode(join);
+    if ((join || '').length > 6) joinInput.classList.add('is-long');
+    else joinInput.classList.remove('is-long');
     if (joinInput.value !== formatted) joinInput.value = formatted;
     const isValid = formatted.length === 6;
     btnConfirmJoin.disabled = !isValid;
@@ -388,36 +422,43 @@ function goToSlide(slideId, push = true) {
     if (push) history.pushState({ slide: slideId }, '');
 }
 
-function startHost() {
+async function startHost() {
     resetWaiterState();
     state.barOrders = [];
     setJoinStatus('');
     const code = generateJoinCode();
     initSessionState(code, true);
-    setupLobbyUI();
+    await setupLobbyUI();
     setLobbyStatus(t('setup.connecting'), 'info');
     goToSlide('lobby');
     connectNetwork();
 }
 
-function joinSession() {
-    const code = formatJoinCode(joinInput.value);
-    if (code.length !== 6) {
+async function joinSession() {
+    let { join } = extractJoinTokens(joinInput.value);
+    
+    let code = '';
+    if (join) {
+        code = formatJoinCode(join);
+    }
+
+    if (!code || code.length !== 6) {
         setJoinStatus(t('alerts.join_invalid'), 'error');
         toast(t('alerts.join_invalid'), 'error');
         return;
     }
+
     resetWaiterState();
     state.barOrders = [];
     setJoinStatus(t('setup.connecting'), 'success');
     setLobbyStatus(t('setup.connecting'), 'info');
     initSessionState(code, false);
-    setupLobbyUI();
+    await setupLobbyUI();
     goToSlide('lobby');
     connectNetwork();
 }
 
-function resumeFlow(session) {
+async function resumeFlow(session) {
     syncStateToSession(session);
     state.peers = {};
     state.barOrders = [];
@@ -425,14 +466,16 @@ function resumeFlow(session) {
     hasNetwork = false;
     setJoinStatus('');
     setLobbyStatus(t('setup.resuming'), 'info');
+
+    let sessionData = session;
     
     if (session.role) {
-        connectNetwork();
+        connectNetwork(sessionData);
         launchRole(session.role);
     } else {
-        setupLobbyUI();
+        await setupLobbyUI();
         goToSlide('lobby');
-        connectNetwork();
+        connectNetwork(sessionData);
     }
 }
 
@@ -456,9 +499,10 @@ function initSessionState(code, isHost) {
     resetWaiterState();
     hasNetwork = false;
     const safeName = (headerUsername.value || '').trim() || 'Worker';
+    const roomId = roomIdFromCode(code);
     const session = {
         sessionCode: code,
-        roomId: roomIdFromCode(code),
+        roomId: roomId,
         isHost: isHost,
         workerName: safeName,
         role: null
@@ -469,9 +513,13 @@ function initSessionState(code, isHost) {
     persist();
 }
 
-function setupLobbyUI() {
+async function setupLobbyUI() {
     displayCode.textContent = state.sessionCode;
-    renderQR(qrCanvas, state.sessionCode, 156);
+    const qrUrl = buildQrUrl();
+    const rendered = renderQR(qrCanvas, qrUrl, 180);
+    if (!rendered) {
+        renderQR(qrCanvas, qrUrl, 180);
+    }
     setLobbyStatus(t('setup.no_peers'), 'info');
     updatePeerUI();
 }
@@ -496,7 +544,7 @@ function launchRole(role) {
 
 // --- NETWORK ---
 
-function connectNetwork() {
+function connectNetwork(restoredSession = null) {
     if (hasNetwork) return;
     if (!state.roomId || !state.sessionCode) {
         toast(t('alerts.no_session'), 'error');
@@ -507,6 +555,7 @@ function connectNetwork() {
     setLobbyStatus(t('setup.connecting'), 'info');
     
     try {
+        const sessionData = restoredSession || loadSession();
         initNetwork(state.roomId, (data, peerId) => {
             if (data.type === 'hello') {
                 state.peers[peerId] = { name: data.name, role: data.role };
@@ -525,11 +574,14 @@ function connectNetwork() {
                 toast(t('alerts.peer_joined'), 'info');
             }
             if (status.type === 'leave') toast(t('alerts.peer_left'), 'info');
+            if (status.type === 'network-update' && status.peerId) {
+                announceSelf(status.peerId);
+            }
             if (status.type === 'error') {
                 setLobbyStatus(t('alerts.network_error'), 'error');
                 toast(t('alerts.network_error'), 'error');
             }
-        });
+        }, sessionData);
     } catch (e) {
         hasNetwork = false;
         setLobbyStatus(t('alerts.network_error'), 'error');
@@ -630,10 +682,8 @@ async function startScanner() {
                 const codes = await detector.detect(scanVideo);
                 if (codes.length > 0) {
                     const raw = codes[0].rawValue;
-                    const match = raw.match(/join=([A-Z0-9]+)/i);
-                    const code = match ? match[1] : raw;
-                    if (code && code.length >= 4) {
-                        joinInput.value = code.toUpperCase();
+                    if (raw && raw.length >= 4) {
+                        joinInput.value = raw.trim();
                         stopScanner();
                         syncJoinControls();
                         setJoinStatus(t('alerts.scan_success'), 'success');
