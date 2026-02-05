@@ -11,8 +11,8 @@
     <link rel="stylesheet" href="/css/fontawesome/css/all.min.css">
     <script>
         // Bump this string to bust caches across all assets and the service worker.
-        //window.__APP_VERSION__ = "0502260_" + '1.0.2';
-        window.__APP_VERSION__ = Math.round(Math.random()*1000000)
+        window.__APP_VERSION__ = "0602260_" + '1.0.2';
+        //window.__APP_VERSION__ = Math.round(Math.random()*1000000)
         window.__ASSET_SUFFIX__ = `?v=${window.__APP_VERSION__}`;
         document.documentElement.dataset.version = window.__APP_VERSION__;
     </script>
@@ -178,7 +178,6 @@
                             <button id="btn-paste" aria-label="Paste">📋</button>
                         </div>
                     </div>
-                    <div class="status-line" id="join-status" role="status" aria-live="polite"></div>
                     <button id="btn-confirm-join" class="btn-primary full-width large mt-4" data-i18n="actions.connect" disabled>Connect</button>
                 </div>
             </div>

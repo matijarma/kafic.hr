@@ -2,9 +2,14 @@
 import { t } from 'i18n';
 
 const modals = [];
+let ignoreNextPopstate = false;
 
 export const initUX = (backCallback) => {
     window.addEventListener('popstate', (e) => {
+        if (ignoreNextPopstate) {
+            ignoreNextPopstate = false;
+            return;
+        }
         if (modals.length > 0) {
             // Close top modal
             const closeFn = modals.pop();
@@ -19,11 +24,7 @@ export const initUX = (backCallback) => {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (modals.length > 0) {
-                const closeFn = modals.pop();
-                if (closeFn) {
-                     closeFn();
-                     history.back(); // Remove state
-                }
+                popModal();
             }
         }
     });
@@ -39,7 +40,9 @@ export const popModal = () => {
     // Manually removing a modal (e.g. via close button)
     // We need to pop the function AND go back in history to remove the dummy state
     if (modals.length > 0) {
-        modals.pop();
+        const closeFn = modals.pop();
+        if (closeFn) closeFn();
+        ignoreNextPopstate = true;
         history.back();
     }
 };

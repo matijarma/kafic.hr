@@ -1,7 +1,7 @@
 import { initNetwork, broadcast } from 'network';
 import { state, resetWaiterState } from 'state';
 import { generateJoinCode, roomIdFromCode, saveSession, loadSession, clearSavedSession, syncStateToSession } from 'session';
-import { initWaiter, refreshWaiter, onOrderCompleted } from 'waiter';
+import { initWaiter, refreshWaiter, onOrderCompleted, canNavigateBack as canWaiterNavigateBack, navigateBack as navigateWaiterBack } from 'waiter';
 import { initBartender, onOrderReceived, setOrderCompletionHandler } from 'bartender';
 import { initManager } from 'manager';
 import { renderQR } from 'qr';
@@ -46,7 +46,6 @@ const btnScan = document.getElementById('btn-scan');
 const btnPaste = document.getElementById('btn-paste');
 const joinHint = document.getElementById('join-hint');
 const joinStatus = document.getElementById('join-status');
-
 // Lobby
 const qrCanvas = document.getElementById('qr-canvas');
 const displayCode = document.getElementById('display-code');
@@ -76,6 +75,11 @@ let hasNetwork = false;
 let waiterStarted = false;
 let bartenderStarted = false;
 let deferredInstallPrompt = null;
+let exitBackArmedUntil = 0;
+let passThroughSystemPopstate = false;
+
+const BACK_EXIT_WINDOW_MS = 1600;
+const APP_BACK_GUARD_STATE = { appBackGuard: true };
 
 const clamp = (val, min, max) => Math.min(max, Math.max(min, val));
 const setBodyView = (viewId = 'setup') => {
@@ -102,13 +106,13 @@ const extractJoinTokens = (raw = '') => {
     if (!trimmed) return { raw: '' };
     try {
         const maybeUrl = new URL(trimmed);
-        const joinParam = maybeUrl.searchParams.get('join');
+        const joinParam = maybeUrl.searchParams.get('n') || maybeUrl.searchParams.get('join');
         if (joinParam) return { raw: trimmed, join: joinParam };
         const shortPath = maybeUrl.pathname.match(/\/n\/([A-Za-z0-9]{6})/i);
         if (shortPath) return { raw: trimmed, join: shortPath[1] };
     } catch (e) {}
 
-    const joinMatch = trimmed.match(/join=([A-Za-z0-9]+)/i);
+    const joinMatch = trimmed.match(/(?:[?&]|^)n=([A-Za-z0-9]+)/i) || trimmed.match(/join=([A-Za-z0-9]+)/i);
     if (joinMatch) return { raw: trimmed, join: joinMatch[1] };
 
     const shortPathMatch = trimmed.match(/(?:^|\/)n\/([A-Za-z0-9]{6})/i);
@@ -119,12 +123,89 @@ const extractJoinTokens = (raw = '') => {
 };
 
 const QR_HOST = 'https://kafić.hr';
-const buildQrUrl = () => `${QR_HOST}/?join=${state.sessionCode}`;
+const buildQrUrl = () => `${QR_HOST}/?n=${state.sessionCode}`;
 
 const buildShareUrl = async () => {
     const origin = window.location.origin;
     const path = window.location.pathname;
-    return `${origin}${path}?join=${state.sessionCode}`;
+    return `${origin}${path}?n=${state.sessionCode}`;
+};
+
+const getActiveSetupSlideId = () => {
+    if (slides.join.classList.contains('active')) return 'join';
+    if (slides.lobby.classList.contains('active')) return 'lobby';
+    return 'home';
+};
+
+const armSystemBackGuard = () => {
+    try {
+        history.replaceState(APP_BACK_GUARD_STATE, '');
+        history.pushState(APP_BACK_GUARD_STATE, '');
+    } catch (e) {}
+};
+
+const handleBackPress = (source = 'ui') => {
+    if (stopScan) {
+        exitBackArmedUntil = 0;
+        stopScanner();
+        return true;
+    }
+
+    const currentView = document.body.dataset.view || 'setup';
+
+    if (currentView === 'waiter') {
+        exitBackArmedUntil = 0;
+        if (canWaiterNavigateBack()) {
+            navigateWaiterBack();
+            return true;
+        }
+        returnToLobby();
+        return true;
+    }
+
+    if (currentView === 'bartender' || currentView === 'manager') {
+        exitBackArmedUntil = 0;
+        returnToLobby();
+        return true;
+    }
+
+    const activeSlide = getActiveSetupSlideId();
+    if (activeSlide === 'join' || activeSlide === 'lobby') {
+        exitBackArmedUntil = 0;
+        goToSlide('home');
+        return true;
+    }
+
+    if (source !== 'system') return true;
+
+    const now = Date.now();
+    if (now <= exitBackArmedUntil) {
+        exitBackArmedUntil = 0;
+        return false;
+    }
+
+    exitBackArmedUntil = now + BACK_EXIT_WINDOW_MS;
+    toast(t('alerts.back_exit'), 'info');
+    return true;
+};
+
+const handleSystemBackPress = () => {
+    if (passThroughSystemPopstate) {
+        passThroughSystemPopstate = false;
+        return;
+    }
+
+    const consumed = handleBackPress('system');
+    if (consumed) {
+        history.pushState(APP_BACK_GUARD_STATE, '');
+        return;
+    }
+
+    passThroughSystemPopstate = true;
+    history.back();
+    setTimeout(() => {
+        passThroughSystemPopstate = false;
+    }, 400);
 };
 
 // --- BOOTSTRAP ---
@@ -161,17 +242,8 @@ function bootstrap() {
     }
 
     // 3. UX (Back button handler)
-    initUX((historyState) => {
-        if (!historyState) {
-            // Root
-            goToSlide('home');
-            return;
-        }
-        if (historyState.view) {
-            goToView(historyState.view, false);
-        } else if (historyState.slide) {
-            goToSlide(historyState.slide, false);
-        }
+    initUX(() => {
+        handleSystemBackPress();
     });
 
     // 4. User Name Load
@@ -201,17 +273,19 @@ function bootstrap() {
     registerServiceWorker();
     
     window.addEventListener('nav-back', () => {
-        // Fallback or explicit navigation
-        returnToLobby();
+        handleBackPress('ui');
     });
     
     // 7. URL Join
     const params = new URLSearchParams(window.location.search);
-    const joinCode = params.get('join');
+    const joinCode = params.get('n') || params.get('join');
     const pathMatch = window.location.pathname.match(/\/n\/([A-Za-z0-9]{6})/i);
     const shortCode = pathMatch ? pathMatch[1] : '';
     if (joinCode || shortCode) {
-        if (joinCode) params.delete('join');
+        if (joinCode) {
+            params.delete('n');
+            params.delete('join');
+        }
         const cleanQuery = params.toString();
         const cleanPath = shortCode ? '/' : window.location.pathname;
         const cleanUrl = `${cleanPath}${cleanQuery ? `?${cleanQuery}` : ''}${window.location.hash || ''}`;
@@ -225,6 +299,8 @@ function bootstrap() {
         syncJoinControls();
         focusJoinInput();
     }
+
+    armSystemBackGuard();
 }
 
 function setupEvents() {
@@ -252,7 +328,7 @@ function setupEvents() {
         }
     };
 
-    document.querySelectorAll('.nav-back-btn').forEach(b => b.onclick = () => history.back());
+    document.querySelectorAll('.nav-back-btn').forEach(b => b.onclick = () => handleBackPress('ui'));
     
     // Join
     if (joinInput) joinInput.removeAttribute('maxlength');
@@ -405,25 +481,26 @@ function setupInstallPrompt() {
 
 // --- FLOWS ---
 
-function goToView(viewId, push = true) {
+function goToView(viewId) {
     // Standard switch (no animation)
     Object.values(views).forEach(el => {
         el.classList.remove('active', 'slide-out-left', 'slide-in-right', 'slide-out-right', 'slide-in-left');
     });
     views[viewId].classList.add('active');
     setBodyView(viewId);
-    if (push) history.pushState({ view: viewId }, '');
+    exitBackArmedUntil = 0;
     checkArrows();
 }
 
-function goToSlide(slideId, push = true) {
+function goToSlide(slideId) {
     if (slideId === 'lobby' && (!state.sessionCode || !state.roomId)) {
         slideId = 'home';
     }
     Object.values(slides).forEach(el => el.classList.remove('active'));
     slides[slideId].classList.add('active');
     setBodyView('setup');
-    if (push) history.pushState({ slide: slideId }, '');
+    if (slideId !== 'home') exitBackArmedUntil = 0;
+    checkArrows();
 }
 
 async function startHost() {

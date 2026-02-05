@@ -169,7 +169,7 @@ function render() {
     };
 }
 
-function renderTree(containerEl, items) {
+function renderTree(containerEl, items, depth = 0) {
     containerEl.innerHTML = '';
     
     items.forEach((item, idx) => {
@@ -177,21 +177,22 @@ function renderTree(containerEl, items) {
         nodeEl.className = 'node';
         
         const hasChildren = item.children && item.children.length > 0;
+        const depthStep = Math.min(depth, 8);
         
         // Use a content wrapper for easy flex management
         nodeEl.innerHTML = `
-            <div class="node-row">
-                <div class="node-toggle ${hasChildren ? '' : 'invisible'}" data-action="toggle">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 18l6-6-6-6" /></svg>
-                </div>
-                
-                <div class="node-content-wrapper">
+            <div class="node-row" style="--node-depth:${depthStep}">
+                <div class="node-main">
+                    <div class="node-toggle ${hasChildren ? '' : 'invisible'}" data-action="toggle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 18l6-6-6-6" /></svg>
+                    </div>
                     <div class="node-thumb-mini hidden" data-action="img"></div>
                     <input type="text" class="node-input" value="${item.label}" placeholder="${t('manager.label_placeholder')}">
-                    <div class="node-price-tag ${hasChildren ? 'hidden' : ''}" contenteditable="true">${item.price || ''}</div>
                     <span class="node-warning hidden" data-action="warn">${t('manager.missing_label')}</span>
                 </div>
-                
+                <div class="node-price-col">
+                    <div class="node-price-tag ${hasChildren ? 'hidden' : ''}" contenteditable="true">${item.price || ''}</div>
+                </div>
                 <div class="node-menu-btn" data-action="menu">
                     <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                 </div>
@@ -318,7 +319,7 @@ function renderTree(containerEl, items) {
                 toggleBtn.classList.add('open');
                 priceTag.classList.add('hidden');
                 childrenContainer.classList.remove('closed');
-                renderTree(childrenContainer, item.children);
+                renderTree(childrenContainer, item.children, depth + 1);
             };
 
             pop.querySelector('[data-act="img"]').onclick = () => fileInput.click();
@@ -347,7 +348,7 @@ function renderTree(containerEl, items) {
 
         // Recursion
         if (hasChildren) {
-            renderTree(childrenContainer, item.children);
+            renderTree(childrenContainer, item.children, depth + 1);
         }
     });
 }

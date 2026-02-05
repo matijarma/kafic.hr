@@ -371,8 +371,7 @@ button:focus-visible, input:focus-visible {
 .helper-text { margin: 0; color: var(--text-muted); }
 
 .code-input-group {
-    display: grid;
-    grid-template-columns: 1fr auto;
+    display: flex;
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-md);
     overflow: hidden;
@@ -381,14 +380,16 @@ button:focus-visible, input:focus-visible {
     box-shadow: var(--shadow-sharp);
 }
 .code-input-group input {
-    padding: 14px;
+    padding: 14px 0;
     font-size: 1.6rem;
     text-align: center;
-    letter-spacing: 6px;
+    letter-spacing: 2vw;
     text-transform: uppercase;
     font-family: var(--font-mono);
     border: none;
     background: transparent;
+    width: 20vw;
+    flex-grow: 1;
 }
 .code-input-group input.is-long {
     letter-spacing: 1px;
@@ -1134,49 +1135,60 @@ input[type=range]::-webkit-slider-runnable-track {
     border-radius: 2px;
 }
 
-/* --- SOPHISTICATED TREE (Notion-like) --- */
+/* --- MENU TREE (Strict Grid) --- */
 .tree-editor {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding-bottom: 60px; /* Space for popover */
+    padding-right: 4px;
 }
 
 .node {
-    display: flex;
-    flex-direction: column;
+    display: block;
+    width: 100%;
     position: relative;
     font-family: var(--font-sans);
 }
 
 .node-row {
-    display: flex;
-    align-items: flex-start;
-    padding: 4px 0;
+    --node-depth: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 7ch 5%;
+    align-items: center;
+    column-gap: 3px;
+    padding: 4px 6px;
     min-height: 36px;
-    border-radius: 4px;
+    border-radius: 6px;
     transition: background 0.05s;
     border-bottom: 1px solid var(--border-soft);
+    width: 100%;
 }
 .node-row:hover { background: rgba(0,0,0,0.03); }
 .node-row:focus-within { background: rgba(242, 92, 47, 0.04); }
 
-/* Indentation Guide Lines */
 .node-children {
-    margin-left: 22px; /* Indent width */
-    padding-left: 2px;
-    border-left: 1px solid rgba(0,0,0,0.06); /* Subtle guide line */
+    margin: 0;
+    padding: 0;
 }
 .node-children.closed { display: none; }
 
-/* Toggle Triangle */
+.node-main {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-left: calc(var(--node-depth) * 12px);
+    overflow: hidden;
+}
+
 .node-toggle {
-    width: 24px; height: 26px;
+    width: 22px; height: 22px;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     color: var(--text-muted);
     user-select: none;
     flex-shrink: 0;
-    margin-top: 2px;
     border-radius: 3px;
 }
 .node-toggle:hover { background: rgba(0,0,0,0.06); color: var(--text-primary); }
@@ -1184,17 +1196,6 @@ input[type=range]::-webkit-slider-runnable-track {
 .node-toggle svg { transition: transform 0.15s ease; width: 10px; height: 10px; }
 .node-toggle.open svg { transform: rotate(90deg); }
 
-/* Content Area */
-.node-content-wrapper {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0; /* Crucial for flex shrinking */
-    padding-right: 4px;
-}
-
-/* The Main Input */
 .node-input {
     flex: 1;
     min-width: 0;
@@ -1202,57 +1203,61 @@ input[type=range]::-webkit-slider-runnable-track {
     background: transparent;
     font-size: 0.95rem;
     color: var(--text-muted);
-    padding: 4px 0;
+    padding: 4px 0 4px 2px;
     font-weight: 500;
+    text-overflow: ellipsis;
 }
 .node-input:focus { outline: none; }
 .node-input::placeholder { color: var(--text-muted); opacity: 0.6; }
 
 .node-warning {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: #b45309;
     background: rgba(245, 158, 11, 0.12);
     border: 1px solid rgba(245, 158, 11, 0.3);
-    padding: 2px 6px;
+    padding: 1px 6px;
     border-radius: 999px;
     white-space: nowrap;
+    max-width: 92px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .node.missing-label .node-input { color: var(--danger); }
 
-/* Price Tag */
+.node-price-col {
+    min-width: 0;
+}
+
 .node-price-tag {
     font-family: var(--font-mono);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: var(--text-muted);
     background: rgba(0,0,0,0.04);
-    padding: 1px 6px;
+    padding: 3px 8px;
     border-radius: 4px;
+    border: 1px solid var(--border-soft);
     cursor: text;
     white-space: nowrap;
+    text-align: right;
+    width: 8ch;
+    min-height: 24px;
 }
 .node-price-tag:empty::before { content: "0.00"; opacity: 0.5; }
 .node-price-tag:focus {
-    background: #fff;
+    background: transparent;
     outline: 2px solid var(--accent);
     color: var(--text-primary);
 }
-
-/* Menu Button */
 .node-menu-btn {
-    width: 24px; height: 24px;
+    width: 28px; height: 28px;
     display: flex; align-items: center; justify-content: center;
     border-radius: 3px;
     color: var(--text-muted);
     cursor: pointer;
-    opacity: 0; /* Hidden by default like Notion */
-    transition: opacity 0.1s;
     flex-shrink: 0;
 }
-.node-row:hover .node-menu-btn,
-.node-row:focus-within .node-menu-btn,
-.node-menu-btn.active { opacity: 1; }
-
 .node-menu-btn:hover { background: rgba(0,0,0,0.06); color: var(--text-primary); }
+.node-menu-btn.active { background: rgba(0,0,0,0.08); color: var(--text-primary); }
 
 /* Popover Menu */
 .popover-menu {
@@ -1289,7 +1294,7 @@ input[type=range]::-webkit-slider-runnable-track {
 
 /* Thumbnail */
 .node-thumb-mini {
-    width: 20px; height: 20px;
+    width: 22px; height: 22px;
     border-radius: 4px;
     background-size: cover;
     background-position: center;
@@ -1392,8 +1397,8 @@ body[data-view="waiter"] .app-footer,
 body[data-view="manager"] .app-footer {
     display: none;
 }
-body[data-view="bartender"] .feed-layout { padding-bottom: 72px; }
-body[data-view="setup"] #view-setup { padding-bottom: 72px; }
+body[data-view="bartender"] .feed-layout { padding-bottom: 8vh; }
+body[data-view="setup"] #view-setup { padding-bottom: 8vh; }
 
 /* --- CONFIRM MODAL --- */
 .custom-confirm { background: transparent; border: none; padding: 0; }
@@ -1502,7 +1507,7 @@ video { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
     .editable-label { max-width: 180px; }
     .grid-layout { gap: 6px; padding: 4px; }
     .order-dock { padding: 6px 10px 8px; }
-    .code-input-group input { font-size: 1.3rem; letter-spacing: 4px; }
+    .code-input-group input { font-size: 1.3rem;  }
     .app-footer { flex-direction: column; }
 }
 
@@ -1816,13 +1821,14 @@ video { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 24px;
+    gap: 16px;
     width: 100%;
     max-width: 420px;
     margin: 0 auto;
-    padding: 20px 0;
+    padding: 0;
     flex: 1;
     justify-content: center;
+    overflow: hidden;
 }
 
 .hero-section {

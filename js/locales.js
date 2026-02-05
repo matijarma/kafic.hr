@@ -52,7 +52,8 @@ export const locales = {
             sw_failed: "System error (SW)",
             updated: "Update available",
             item_added: "{qty}x {item} added",
-            code_copied: "Code copied"
+            code_copied: "Code copied",
+            back_exit: "Press back again to exit"
         },
         confirm: { title: "Confirm Action", clear: "Discard this order?", leave_session: "Disconnect from session?" },
         manager: {
@@ -136,7 +137,8 @@ export const locales = {
             sw_failed: "Sistemska greška",
             updated: "Dostupna nadogradnja",
             item_added: "Dodan {item} ({qty}x)",
-            code_copied: "Kod kopiran"
+            code_copied: "Kod kopiran",
+            back_exit: "Pritisni ponovno za izlaz"
         },
         confirm: { title: "Potvrda", clear: "Obrisati cijelu narudžbu?", leave_session: "Prekinuti radnu sesiju?" },
         manager: {

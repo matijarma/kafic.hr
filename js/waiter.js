@@ -351,6 +351,13 @@ const handleBack = () => {
     render();
 };
 
+export const canNavigateBack = () => !!state.currentTable;
+export const navigateBack = () => {
+    if (!state.currentTable) return false;
+    handleBack();
+    return true;
+};
+
 const openQty = (item) => {
     pendingItem = item;
     pendingQty = 1;
