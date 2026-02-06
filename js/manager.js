@@ -1,4 +1,4 @@
-import { getTableCount, setTableCount, getMenu, saveMenu } from 'data';
+import { getTableCount, setTableCount, getMenu, saveMenu, isMenuColorizeEnabled, setMenuColorizeEnabled } from 'data';
 import { saveImage, deleteImage, getImage } from 'db';
 import { t } from 'i18n';
 import { toast, confirm } from 'ux';
@@ -56,39 +56,51 @@ function render() {
                 <div style="width:40px"></div>
             </header>
 
-            <div class="config-card compact-row">
-                <!-- Solo Mode Toggle -->
+            <div class="config-card compact-row" id="settingtoggles">
+                <div>
+                    <!-- Solo Mode Toggle -->
+                    
+                    <div class="control-group shrink">
+                        <label class="section-label" data-i18n="settings.solomode">Solo Mode</label>
+                        <label class="fancy-switch" aria-label="Solo Mode">
+                            <input type="checkbox" id="tog-solo">
+                            <span class="switch-track">
+                                <span class="switch-icon left" data-i18n="settings.on"><i class="fas fa-check-circle"></i></span>
+                                <span class="switch-icon right"><i class="fas fa-power-off"></i></span>
+                                <span class="switch-thumb"></span>
+                            </span>
+                        </label>
+                    </div>
                 
-                <div class="v-sep"></div>
-                <div class="control-group shrink">
-                    <label class="section-label" data-i18n="settings.solomode">Solo Mode</label>
-                    <label class="fancy-switch" aria-label="Solo Mode">
-                        <input type="checkbox" id="tog-solo">
-                        <span class="switch-track">
-                            <span class="switch-icon left" data-i18n="settings.on"><i class="fas fa-check-circle"></i></span>
-                            <span class="switch-icon right"><i class="fas fa-power-off"></i></span>
-                            <span class="switch-thumb"></span>
-                        </span>
-                    </label>
+                    <div class="v-sep"></div>
+
+                    <!-- Hand Toggle -->
+                    <div class="control-group shrink">
+                        <label class="section-label">${t('settings.handed')}</label>
+                        <label class="fancy-switch" aria-label="${t('settings.handed')}">
+                            <input type="checkbox" id="tog-hand">
+                            <span class="switch-track">
+                                <span class="switch-icon left" data-i18n="setup.lijevo">L</span>
+                                <span class="switch-icon right" data-i18n="setup.desno">D</span>
+                                <span class="switch-thumb"></span>
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="v-sep"></div>
+
+                    <div class="section-tools">
+                        <span class="section-label">${t('manager.colorize')}</span>
+                        <label class="fancy-switch compact-switch" aria-label="${t('manager.colorize')}">
+                            <input type="checkbox" id="tog-colorize">
+                            <span class="switch-track">
+                                <span class="switch-icon left">${t('settings.on')}</span>
+                                <span class="switch-icon right">${t('settings.off')}</span>
+                                <span class="switch-thumb"></span>
+                            </span>
+                        </label>
+                    </div>
                 </div>
-            
-                <div class="v-sep"></div>
-
-                <!-- Hand Toggle -->
-                <div class="control-group shrink">
-                    <label class="section-label">${t('settings.handed')}</label>
-                    <label class="fancy-switch" aria-label="${t('settings.handed')}">
-                        <input type="checkbox" id="tog-hand">
-                        <span class="switch-track">
-                            <span class="switch-icon left" data-i18n="setup.lijevo">L</span>
-                            <span class="switch-icon right" data-i18n="setup.desno">D</span>
-                            <span class="switch-thumb"></span>
-                        </span>
-                    </label>
-                </div>
-
-                <div class="v-sep"></div>
-
                 <!-- Table Count -->
                 <div class="control-group grow">
                     <div class="slider-header">
@@ -100,10 +112,10 @@ function render() {
             </div>
 
             <div class="config-card flex-fill">
+                
                 <div class="section-header">
                     <label class="section-label">${t('manager.menu_structure')}</label>
                 </div>
-                
                 <div class="tree-editor" id="menu-tree"></div>
                 
                 <button class="btn-ghost full-width" id="btn-add-root">
@@ -123,6 +135,7 @@ function render() {
     const dispCount = container.querySelector('#disp-count');
     const togHand = container.querySelector('#tog-hand');
     const togSolo = container.querySelector('#tog-solo');
+    const togColorize = container.querySelector('#tog-colorize');
 
     // Solo Logic
     togSolo.checked = state.soloMode;
@@ -149,6 +162,14 @@ function render() {
     togHand.onchange = () => {
         applyHanded(togHand.checked);
     };
+
+    if (togColorize) {
+        togColorize.checked = isMenuColorizeEnabled();
+        togColorize.onchange = () => {
+            setMenuColorizeEnabled(togColorize.checked);
+            window.dispatchEvent(new CustomEvent('menu-colorize-change'));
+        };
+    }
     
     // Slider Logic
     inpSlider.oninput = () => {

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Politika privatnosti - Kafić.hr</title>
+    <style>
+        :root {
+            --font-sans: "Manrope", "DM Sans", "Segoe UI Variable", "Inter", system-ui, sans-serif;
+            --bg-body: #f4f1ec;
+            --bg-surface-1: #ffffff;
+            --text-primary: #1f2a38;
+            --text-secondary: #344155;
+            --accent: #f25c2f;
+            --border-strong: #e1d7c8;
+            --radius-lg: 18px;
+            --shadow-soft: 0 14px 36px rgba(20, 24, 31, 0.08);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-body: #111827;
+                --bg-surface-1: #1f2937;
+                --text-primary: #f3f4f6;
+                --text-secondary: #d1d5db;
+                --border-strong: #374151;
+            }
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-body);
+            color: var(--text-primary);
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            background: var(--bg-surface-1);
+            padding: 40px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-strong);
+            box-shadow: var(--shadow-soft);
+        }
+
+        h1 {
+            color: var(--accent);
+            margin-top: 0;
+            font-size: 2rem;
+            border-bottom: 2px solid var(--border-strong);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        h2 {
+            margin-top: 30px;
+            font-size: 1.4rem;
+            color: var(--text-primary);
+        }
+
+        p, li {
+            color: var(--text-secondary);
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-strong);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Politika privatnosti</h1>
+        <p><strong>Datum stupanja na snagu:</strong> 4. veljače 2026.</p>
+        <p><strong>Predstavlja:</strong> Aning Film d.o.o., Opatovina 25, 10000 Zagreb, OIB 52144444572</p>
+
+        <p>Kafić.hr ("mi", "naš" ili "nas") posvećen je zaštiti vaše privatnosti. Ova Politika privatnosti objašnjava kako naše Chrome proširenje i web aplikacija obrađuju vaše podatke. Korištenjem aplikacije Kafić.hr pristajete na prakse opisane u ovoj politici.</p>
+
+        <h2>1. Prikupljanje i pohrana podataka</h2>
+        <p><strong>Ne prikupljamo, ne prenosimo i ne pohranjujemo vaše osobne podatke na vanjskim poslužiteljima.</strong></p>
+        <p>Kafić.hr radi po načelu "Local-First" i "Peer-to-Peer" (P2P). Svi podaci koje aplikacija generira (uključujući jelovnike, narudžbe, zapisnike sesije i postavke) pohranjuju se isključivo lokalno na vašem uređaju koristeći standardne tehnologije preglednika (LocalStorage i IndexedDB).</p>
+
+        <h2>2. Sinkronizacija podataka</h2>
+        <p>Za suradnju između uređaja u stvarnom vremenu (primjerice između konobara i šanka), Kafić.hr koristi <a href="https://webrtc.org/" target="_blank">WebRTC</a> putem biblioteke <a href="https://github.com/dmotz/trystero" target="_blank">Trystero</a>. Time se uređaji povezuju izravno, bez centralne baze podataka.</p>
+        <ul>
+            <li><strong>Signalizacija:</strong> Lagani signalizacijski poslužitelj koristi se privremeno samo za uspostavu početne veze ("handshake") između uređaja putem sigurnog koda sobe. Nikakvi aplikacijski podaci (narudžbe, imena, jelovnici) ne ostaju trajno pohranjeni na tom poslužitelju.</li>
+            <li><strong>Enkripcija:</strong> Podaci koji se prenose između peer uređaja šifrirani su standardnim WebRTC sigurnosnim protokolima (DTLS/SRTP).</li>
+        </ul>
+
+        <h2>3. Dozvole</h2>
+        <p>Kafić.hr Chrome proširenje traži specifične dozvole kako bi pravilno radilo:</p>
+        <ul>
+            <li><strong>sidePanel:</strong> Koristi se za prikaz sučelja aplikacije u bočnoj traci preglednika radi stalnog pristupa.</li>
+            <li><strong>storage:</strong> Koristi se za lokalno spremanje postavki, konfiguracije jelovnika i stanja aktivne sesije na vašem uređaju.</li>
+            <li><strong>camera (neobavezno):</strong> Traži se samo ako odaberete skeniranje QR koda za pridruživanje sesiji. Video podaci obrađuju se lokalno u memoriji i nikada se ne snimaju niti šalju.</li>
+        </ul>
+
+        <h2>4. Usluge trećih strana</h2>
+        <p>Ova aplikacija je samostalna. Ne koristi analitiku trećih strana, alate za praćenje ni oglasne mreže.</p>
+
+        <h2>5. Vaša prava</h2>
+        <p>Budući da su svi podaci pohranjeni lokalno na vašem uređaju, imate potpunu kontrolu nad njima. Sve podatke aplikacije možete obrisati u bilo kojem trenutku brisanjem cache/storage podataka preglednika za proširenje ili korištenjem gumba "Factory Reset" unutar postavki aplikacije.</p>
+
+        <h2>6. Promjene ove politike</h2>
+        <p>Ovu Politiku privatnosti možemo povremeno ažurirati. Svaka promjena bit će objavljena na ovoj stranici uz ažurirani datum stupanja na snagu.</p>
+
+        <h2>7. Kontakt</h2>
+        <p>Ako imate pitanja o ovoj Politici privatnosti, kontaktirajte nas na:</p>
+        <p><a href="mailto:matija@aningfilm.hr">matija@aningfilm.hr</a></p>
+
+        <div class="footer">
+            &copy; 2026 Aning Film d.o.o. Sva prava pridržana.
+        </div>
+    </div>
+
+</body>
+</html>

@@ -20,6 +20,8 @@ const ASSETS = [
   `/js/locales.js${SUFFIX}`,
   `/js/ux.js${SUFFIX}`,
   `/js/trystero.min.js${SUFFIX}`,
+  `/privacy-policy.html${SUFFIX}`,
+  `/privacy-policy-hr.html${SUFFIX}`,
   `/manifest.json${SUFFIX}`,
   `/images/kafichr-logo-circle-alpha-256.png${SUFFIX}`,
   `/images/kafichr-logo-512.jpg${SUFFIX}`,

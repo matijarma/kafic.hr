@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/css/fontawesome/css/all.min.css">
     <script>
         // Bump this string to bust caches across all assets and the service worker.
-        window.__APP_VERSION__ = "0602260_" + '1.0.2';
+        window.__APP_VERSION__ = "0602260_" + '1.1.6';
         //window.__APP_VERSION__ = Math.round(Math.random()*1000000)
         window.__ASSET_SUFFIX__ = `?v=${window.__APP_VERSION__}`;
         document.documentElement.dataset.version = window.__APP_VERSION__;
@@ -103,6 +103,9 @@
                     <button id="header-conn" class="header-conn-indicator" aria-label="Connection Status">
                         <span class="dot"></span>
                         <span class="count"></span>
+                    </button>
+                    <button id="btn-open-help" class="icon-btn small" aria-label="Open guide" title="Open guide">
+                        <i class="fas fa-info"></i>
                     </button>
                     <button id="btn-toggle-theme" class="icon-btn small" aria-label="Toggle Theme">◐</button>
                     <button id="btn-toggle-lang" class="icon-btn small" aria-label="Toggle Language"></button>
@@ -331,6 +334,34 @@
         <div class="scan-reticle"></div>
     </div>
 
+    <!-- Privacy Policy Modal -->
+    <dialog id="privacy-modal" class="privacy-modal">
+        <div class="privacy-modal-content">
+            <header class="privacy-modal-header">
+                <h3 data-i18n="footer.privpolicy">Privacy policy</h3>
+                <button id="btn-close-privacy" class="icon-btn" type="button" aria-label="Close">✕</button>
+            </header>
+            <iframe
+                id="privacy-modal-frame"
+                class="privacy-modal-frame"
+                src="privacy-policy.html"
+                title="Privacy policy"
+                loading="lazy"
+            ></iframe>
+        </div>
+    </dialog>
+
+    <!-- Help Guide Modal -->
+    <dialog id="help-modal" class="privacy-modal help-modal">
+        <div class="privacy-modal-content">
+            <header class="privacy-modal-header">
+                <h3 id="help-modal-title" data-i18n="help.title">How to use Kafić.hr</h3>
+                <button id="btn-close-help" class="icon-btn" type="button" aria-label="Close">✕</button>
+            </header>
+            <div id="help-modal-content" class="help-modal-body"></div>
+        </div>
+    </dialog>
+
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
@@ -344,7 +375,9 @@
             <span class="dot">•</span>
             <span data-i18n="footer.credit">Developed by Matija Radeljak</span>
             <span class="dot">•</span>
-            <a href="privacy-policy.html" target="_blank"><span data-i18n="footer.privpolicy">Developed by Matija Radeljak</span></a>
+            <button id="btn-privacy-policy" class="footer-policy-link" type="button">
+                <span data-i18n="footer.privpolicy">Privacy policy</span>
+            </button>
         </div>
         <div class="footer-links">
             <a class="footer-link" href="https://aningfilm.hr" target="_blank" rel="noopener noreferrer" aria-label="AningFilm">

@@ -1,4 +1,4 @@
-import { getMenu, getTables } from 'data';
+import { getMenu, getTables, isMenuColorizeEnabled } from 'data';
 import { getImage } from 'db';
 import { state, resetWaiterState } from 'state';
 import { broadcast } from 'network';
@@ -39,6 +39,116 @@ let gridObserver = null;
 let lastOrderCount = 0;
 let orderObserver = null;
 
+const COLORIZE_PALETTE = [
+    [244, 114, 182],
+    [59, 130, 246],
+    [20, 184, 166],
+    [245, 158, 11],
+    [168, 85, 247],
+    [34, 197, 94],
+    [239, 68, 68],
+    [14, 165, 233],
+    [132, 204, 22],
+    [236, 72, 153]
+];
+
+const hslToRgb = (h, s, l) => {
+    const sat = s / 100;
+    const light = l / 100;
+    const c = (1 - Math.abs((2 * light) - 1)) * sat;
+    const hPrime = h / 60;
+    const x = c * (1 - Math.abs((hPrime % 2) - 1));
+    let r = 0;
+    let g = 0;
+    let b = 0;
+
+    if (hPrime >= 0 && hPrime < 1) {
+        r = c;
+        g = x;
+    } else if (hPrime < 2) {
+        r = x;
+        g = c;
+    } else if (hPrime < 3) {
+        g = c;
+        b = x;
+    } else if (hPrime < 4) {
+        g = x;
+        b = c;
+    } else if (hPrime < 5) {
+        r = x;
+        b = c;
+    } else {
+        r = c;
+        b = x;
+    }
+
+    const m = light - (c / 2);
+    return [
+        Math.round((r + m) * 255),
+        Math.round((g + m) * 255),
+        Math.round((b + m) * 255)
+    ];
+};
+
+const getColorByIndex = (index) => {
+    if (index < COLORIZE_PALETTE.length) return COLORIZE_PALETTE[index];
+    const hue = (index * 137.508) % 360;
+    return hslToRgb(hue, 72, 56);
+};
+
+const buildTopLevelColorMap = () => {
+    const rootItems = getMenu() || [];
+    const map = new Map();
+    rootItems.forEach((item, index) => {
+        if (!item) return;
+        const key = item.id || `root-index-${index}`;
+        map.set(key, getColorByIndex(index));
+    });
+    return map;
+};
+
+const resolveTopLevelKey = (item) => {
+    const topLevel = state.currentPath.length > 0 ? state.currentPath[0] : item;
+    if (!topLevel) return '';
+    if (topLevel.id) return topLevel.id;
+    const rootItems = getMenu() || [];
+    const rootIndex = rootItems.indexOf(topLevel);
+    return `root-index-${Math.max(0, rootIndex)}`;
+};
+
+const resolveColorDepth = () => state.currentPath.length;
+
+const buildColorizedBackground = (rgb, depth) => {
+    const [r, g, b] = rgb;
+    const alphaA = Math.max(0.08, 0.24 - (depth * 0.035));
+    const alphaB = Math.max(0.04, alphaA * 0.62);
+    return `linear-gradient(155deg, rgba(${r}, ${g}, ${b}, ${alphaA}), rgba(${r}, ${g}, ${b}, ${alphaB}))`;
+};
+
+const applyImageTileBackground = (el, item, onSuccess = null) => {
+    if (!item.imageId) return;
+    getImage(item.imageId).then(blob => {
+        if (!blob || !el.isConnected) return;
+        const url = URL.createObjectURL(blob);
+        el.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${url})`;
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+        el.style.textShadow = '0 1px 3px rgba(0,0,0,0.8)';
+        if (typeof onSuccess === 'function') onSuccess();
+    });
+};
+
+const applyColorizedTileBackground = (el, item, topLevelColorMap) => {
+    const topLevelKey = resolveTopLevelKey(item);
+    const rgb = topLevelColorMap.get(topLevelKey) || getColorByIndex(0);
+    const depth = resolveColorDepth();
+    el.style.backgroundImage = buildColorizedBackground(rgb, depth);
+    el.style.backgroundSize = '';
+    el.style.backgroundPosition = '';
+    el.style.textShadow = 'none';
+    el.style.borderTop = 'none';
+};
+
 export const initWaiter = () => {
     // Setup event listeners
     sendBtn.onclick = sendOrder;
@@ -72,6 +182,8 @@ export const initWaiter = () => {
     observeGrid();
     observeOrderList();
     bindClearHold();
+
+    window.addEventListener('menu-colorize-change', render);
 };
 
 const scheduleGridLayout = (count) => {
@@ -267,6 +379,9 @@ const render = () => {
 const renderTables = () => {
     breadcrumbs.textContent = t('waiter.select_table');
     grid.innerHTML = '';
+    if (grid) {
+        grid.classList.remove('colorized');
+    }
     
     const tables = getTables();
     
@@ -296,43 +411,48 @@ const renderMenu = (items) => {
     
     grid.innerHTML = '';
     const visibleItems = (items || []).filter(item => (item.label || '').trim().length > 0);
+    const colorizeEnabled = isMenuColorizeEnabled();
+    if (grid) {
+        grid.classList.toggle('colorized', colorizeEnabled);
+    }
+    const topLevelColorMap = colorizeEnabled ? buildTopLevelColorMap() : null;
     visibleItems.forEach(item => {
         const el = document.createElement('button');
         el.className = 'grid-item';
         
         if (item.children && item.children.length > 0) {
             el.style.borderTop = `4px solid ${item.color || '#999'}`;
-            el.innerHTML = `<span>${item.label}</span>`;
+            el.innerHTML = `
+                <div class="grid-item-content">
+                    <i class="fas fa-layer-group tile-icon" aria-hidden="true"></i>
+                    <span class="grid-item-label">${item.label}</span>
+                </div>
+            `;
             el.onclick = () => {
                 state.currentPath.push(item);
                 render();
             };
-            if (item.imageId) {
-                getImage(item.imageId).then(blob => {
-                    if (blob) {
-                        const url = URL.createObjectURL(blob);
-                        el.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${url})`;
-                        el.style.backgroundSize = 'cover';
-                        el.style.backgroundPosition = 'center';
-                        el.style.textShadow = '0 1px 3px rgba(0,0,0,0.8)';
-                        el.style.borderTop = 'none'; // Optional: remove color border if image exists
-                    }
+            if (colorizeEnabled) {
+                applyColorizedTileBackground(el, item, topLevelColorMap);
+            } else if (item.imageId) {
+                applyImageTileBackground(el, item, () => {
+                    el.style.borderTop = 'none';
                 });
             }
         } else {
-            el.innerHTML = `<span>${item.label}</span><small style="opacity:0.6">${item.price||''}</small>`;
+            el.innerHTML = `
+                <div class="grid-item-content">
+                    <i class="fas fa-tag tile-icon" aria-hidden="true"></i>
+                    <span class="grid-item-label">${item.label}</span>
+                </div>
+                <small class="grid-item-price">${item.price||''}</small>
+            `;
             el.onclick = () => openQty(item);
 
-            if (item.imageId) {
-                getImage(item.imageId).then(blob => {
-                    if (blob) {
-                        const url = URL.createObjectURL(blob);
-                        el.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${url})`;
-                        el.style.backgroundSize = 'cover';
-                        el.style.backgroundPosition = 'center';
-                        el.style.textShadow = '0 1px 3px rgba(0,0,0,0.8)';
-                    }
-                });
+            if (colorizeEnabled) {
+                applyColorizedTileBackground(el, item, topLevelColorMap);
+            } else if (item.imageId) {
+                applyImageTileBackground(el, item);
             }
         }
         grid.appendChild(el);

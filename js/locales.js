@@ -60,6 +60,7 @@ export const locales = {
             title: "Menu Manager",
             table_count: "Table Count",
             menu_structure: "Menu Editor",
+            colorize: "Colorize",
             add_item: "Add Item",
             add_subitem: "Add Sub-item",
             add_image: "Add Image",
@@ -82,6 +83,10 @@ export const locales = {
             privacy: "100% Private & Open Source",
             credit: "Created by Matija Radeljak",
             privpolicy: "Privacy policy"
+        },
+        help: {
+            title: "How to use Kafić.hr",
+            open: "Open guide"
         }
     },
     hr: {
@@ -145,6 +150,7 @@ export const locales = {
             title: "Uređivanje",
             table_count: "Broj stolova",
             menu_structure: "Uređivanje ponude",
+            colorize: "Oboji",
             add_item: "Nova stavka",
             add_subitem: "Nova pod-stavka",
             add_image: "Dodaj sliku",
@@ -167,6 +173,10 @@ export const locales = {
             privacy: "Privatno i otvorenog koda",
             credit: "Aning Film d.o.o.",
             privpolicy: "Politika privatnosti"
+        },
+        help: {
+            title: "Upute za korištenje",
+            open: "Otvori upute"
         }
     }
 };

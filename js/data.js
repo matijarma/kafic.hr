@@ -121,6 +121,9 @@ const DEFAULT_MENU = [
 // Active Data
 let tableCount = DEFAULT_TABLE_COUNT;
 let activeMenu = null;
+let menuColorize = false;
+
+const MENU_COLORIZE_KEY = 'barlink_menu_colorize';
 
 // Initialize
 function initData() {
@@ -142,6 +145,10 @@ function initData() {
         const storedMenu = localStorage.getItem('barlink_menu');
         activeMenu = storedMenu ? JSON.parse(storedMenu) : DEFAULT_MENU;
     } catch (e) { activeMenu = DEFAULT_MENU; }
+
+    try {
+        menuColorize = localStorage.getItem(MENU_COLORIZE_KEY) === '1';
+    } catch (e) { menuColorize = false; }
 }
 
 initData();
@@ -153,6 +160,7 @@ export const getTables = () => {
     return Array.from({ length: tableCount }, (_, i) => ({ id: i + 1, label: `Table ${i + 1}` }));
 };
 export const getMenu = () => activeMenu;
+export const isMenuColorizeEnabled = () => menuColorize;
 
 // Setters
 export const setTableCount = (count) => {
@@ -168,4 +176,9 @@ export const saveTables = (arr) => {
 export const saveMenu = (newMenu) => {
     activeMenu = newMenu;
     localStorage.setItem('barlink_menu', JSON.stringify(activeMenu));
+};
+
+export const setMenuColorizeEnabled = (enabled) => {
+    menuColorize = !!enabled;
+    localStorage.setItem(MENU_COLORIZE_KEY, menuColorize ? '1' : '0');
 };
