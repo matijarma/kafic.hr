@@ -86,11 +86,42 @@ let bartenderStarted = false;
 let deferredInstallPrompt = null;
 let exitBackArmedUntil = 0;
 let passThroughSystemPopstate = false;
+let viewportSyncBound = false;
 
 const BACK_EXIT_WINDOW_MS = 1600;
 const APP_BACK_GUARD_STATE = { appBackGuard: true };
 
 const clamp = (val, min, max) => Math.min(max, Math.max(min, val));
+const getViewportHeight = () => {
+    const vvHeight = window.visualViewport && Number.isFinite(window.visualViewport.height)
+        ? window.visualViewport.height
+        : 0;
+    const innerHeight = Number.isFinite(window.innerHeight) ? window.innerHeight : 0;
+    const fallback = Number.isFinite(window.screen?.height) ? window.screen.height : 0;
+    const resolved = vvHeight && innerHeight
+        ? Math.min(vvHeight, innerHeight)
+        : (vvHeight || innerHeight || fallback);
+    return Math.max(0, Math.round(resolved));
+};
+const syncViewportHeightVar = () => {
+    const height = getViewportHeight();
+    if (!height) return;
+    document.documentElement.style.setProperty('--app-height', `${height}px`);
+};
+const bindViewportHeightSync = () => {
+    if (viewportSyncBound) return;
+    viewportSyncBound = true;
+    const onResize = () => {
+        syncViewportHeightVar();
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    window.addEventListener('pageshow', onResize);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', onResize);
+        window.visualViewport.addEventListener('scroll', onResize);
+    }
+};
 const setBodyView = (viewId = 'setup') => {
     document.body.dataset.view = viewId;
 };
@@ -537,6 +568,8 @@ const openHelpModal = () => {
 bootstrap();
 
 function bootstrap() {
+    bindViewportHeightSync();
+    syncViewportHeightVar();
     setBodyView('setup');
     
     // Bind Bartender Completion to Logic (Local + Network)
@@ -1070,14 +1103,17 @@ function updatePeerUI() {
         if (!online) {
             headerConn.classList.add('error');
             headerConn.classList.remove('active');
-            if(countLabel) countLabel.textContent = 'Offline';
+            if (countLabel) countLabel.textContent = t('setup.conn_offline_bi');
         } else if (count > 0) {
             headerConn.classList.add('active');
             headerConn.classList.remove('error');
-            if(countLabel) countLabel.textContent = `${count} Peer${count > 1 ? 's' : ''}`;
+            if (countLabel) {
+                const key = count === 1 ? 'setup.conn_peer_bi' : 'setup.conn_peers_bi';
+                countLabel.textContent = t(key, { count });
+            }
         } else {
             headerConn.classList.remove('active', 'error');
-            if(countLabel) countLabel.textContent = 'Waiting...';
+            if (countLabel) countLabel.textContent = t('setup.conn_waiting_bi');
         }
         
         // Click handler for details (simple toast for now)
