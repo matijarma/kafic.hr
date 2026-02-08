@@ -30,10 +30,12 @@ const closeQtyBtn = document.getElementById('btn-close-qty');
 const clearQtyBtn = document.getElementById('btn-clear-qty');
 const applyQtyBtn = document.getElementById('btn-apply-qty');
 const qtySteps = document.querySelectorAll('.qty-step');
+const payBtns = document.querySelectorAll('.compact-payment .pay-btn');
 
-const qtyPresets = [1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24];
+const qtyPresets = [3, 4, 5, 8, 10, 15];
 let pendingItem = null;
 let pendingQty = 1;
+let selectedPaymentMethod = null;
 let lastGridCount = 0;
 let gridObserver = null;
 let lastOrderCount = 0;
@@ -161,6 +163,10 @@ export const initWaiter = () => {
     };
     applyQtyBtn.onclick = () => confirmQty(pendingQty);
     
+    payBtns.forEach(btn => {
+        btn.onclick = () => togglePayment(btn.dataset.method);
+    });
+
     closeQtyBtn.onclick = () => {
         qtyModal.removeAttribute('open');
         popModal();
@@ -339,6 +345,21 @@ const updateQtyDisplay = () => {
     qtyValue.textContent = pendingQty;
 };
 
+const togglePayment = (method) => {
+    if (selectedPaymentMethod === method) {
+        selectedPaymentMethod = null;
+    } else {
+        selectedPaymentMethod = method;
+    }
+    updatePaymentDisplay();
+};
+
+const updatePaymentDisplay = () => {
+    payBtns.forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.method === selectedPaymentMethod);
+    });
+};
+
 const render = () => {
     // Status
     if (netPill) {
@@ -424,7 +445,7 @@ const renderMenu = (items) => {
             el.style.borderTop = `4px solid ${item.color || '#999'}`;
             el.innerHTML = `
                 <div class="grid-item-content">
-                    <i class="fas fa-layer-group tile-icon" aria-hidden="true"></i>
+                    <i class="fas fa-cubes tile-icon" aria-hidden="true"></i>
                     <span class="grid-item-label">${item.label}</span>
                 </div>
             `;
@@ -442,7 +463,7 @@ const renderMenu = (items) => {
         } else {
             el.innerHTML = `
                 <div class="grid-item-content">
-                    <i class="fas fa-tag tile-icon" aria-hidden="true"></i>
+                    <i class="fas fa-wine-glass-alt" aria-hidden="true"></i>
                     <span class="grid-item-label">${item.label}</span>
                 </div>
                 <small class="grid-item-price">${item.price||''}</small>
@@ -500,12 +521,20 @@ const confirmQty = (qty) => {
     const context = state.currentPath.map(p => p.label).join(' ');
     const finalQty = clampQty(qty);
     
+    let color = null;
+    if (isMenuColorizeEnabled()) {
+         const topMap = buildTopLevelColorMap();
+         const key = resolveTopLevelKey(pendingItem);
+         color = topMap.get(key);
+    }
+    
     const itemLabel = pendingItem.label;
     state.currentOrder.push({
         id: pendingItem.id,
         label: pendingItem.label,
         qty: finalQty,
-        context
+        context,
+        color
     });
     
     qtyModal.removeAttribute('open');
@@ -537,10 +566,13 @@ const renderOrderDock = () => {
         state.currentOrder.forEach((item, idx) => {
             const row = document.createElement('div');
             row.className = 'order-item';
+            let metaHtml = '';
+            if (item.context) metaHtml += `<span class="muted">${item.context}</span>`;
+            
             row.innerHTML = `
                 <div class="order-item-info">
                     <div class="name"><span class="qty">${item.qty}x</span> ${item.label}</div>
-                    ${item.context ? `<div class="muted">${item.context}</div>` : ''}
+                    <div style="font-size:0.8em; line-height:1.2">${metaHtml}</div>
                 </div>
                 <button class="order-item-remove" aria-label="${t('actions.remove')}">✕</button>
             `;
@@ -557,6 +589,8 @@ const renderOrderDock = () => {
 const clearOrder = async () => {
     if(state.currentOrder.length > 0 && await confirm(t('confirm.clear'))) {
         state.currentOrder = [];
+        selectedPaymentMethod = null;
+        updatePaymentDisplay();
         renderOrderDock();
     }
 };
@@ -564,11 +598,16 @@ const clearOrder = async () => {
 const sendOrder = () => {
     if (!state.currentTable || state.currentOrder.length === 0) return;
     
+    const itemsToSend = state.currentOrder.map(item => ({
+        ...item,
+        payment: selectedPaymentMethod
+    }));
+
     // We allow sending even if offline/no peers (local echo)
     const payload = {
         type: 'new-order',
         tableId: state.currentTable.id,
-        items: state.currentOrder,
+        items: itemsToSend,
         timestamp: Date.now()
     };
     
@@ -581,6 +620,10 @@ const sendOrder = () => {
     // 3. Feedback
     state.unclearedTables.add(state.currentTable.id);
     toast(t('alerts.order_sent'), 'success');
+    
+    // Reset
+    selectedPaymentMethod = null;
+    updatePaymentDisplay();
     resetWaiterState();
     render();
 };

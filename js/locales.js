@@ -28,7 +28,14 @@ export const locales = {
             current_order: "Current Order", empty: "No items selected",
             empty_order: "Order is empty",
             tables: "Tables",
-            menu_root: "Menu"
+            menu_root: "Menu",
+            payment_method: "Payment Method"
+        },
+        payment: {
+            cash: "Cash",
+            card: "Card",
+            virman: "Transfer",
+            house: "On House"
         },
         bartender: { incoming: "Queue", all_done: "No pending orders", table_label: "Tbl {table}" },
         actions: {
@@ -89,7 +96,7 @@ export const locales = {
             privpolicy: "Privacy policy"
         },
         help: {
-            title: "How to use Kafić.hr",
+            title: "How to Use Kafić.hr",
             open: "Open guide"
         }
     },
@@ -122,7 +129,14 @@ export const locales = {
             current_order: "Trenutni unos", empty: "Nema stavki",
             empty_order: "Prazna narudžba",
             tables: "Sala",
-            menu_root: "Cjenik"
+            menu_root: "Cjenik",
+            payment_method: "Način plaćanja"
+        },
+        payment: {
+            cash: "Gotovina",
+            card: "Kartica",
+            virman: "Virman",
+            house: "Kuća"
         },
         bartender: { incoming: "Nove narudžbe", all_done: "Sve isporučeno", table_label: "Stol {table}" },
         actions: {
@@ -183,7 +197,7 @@ export const locales = {
             privpolicy: "Politika privatnosti"
         },
         help: {
-            title: "Upute za korištenje",
+            title: "Kako koristiti Kafić.hr",
             open: "Otvori upute"
         }
     }

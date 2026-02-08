@@ -11,8 +11,8 @@
     <link rel="stylesheet" href="/css/fontawesome/css/all.min.css">
     <script>
         // Bump this string to bust caches across all assets and the service worker.
-        window.__APP_VERSION__ = "0602260_" + '1.1.9';
-        //window.__APP_VERSION__ = Math.round(Math.random()*1000000)
+        //window.__APP_VERSION__ = "6226-" + '1.2';
+        window.__APP_VERSION__ = Math.round(Math.random()*1000000)
         window.__ASSET_SUFFIX__ = `?v=${window.__APP_VERSION__}`;
         document.documentElement.dataset.version = window.__APP_VERSION__;
     </script>
@@ -264,6 +264,25 @@
                         </button>
                     </div>
                 </div>
+                
+                <!-- Payment Selector (Moved Here) -->
+                <div class="payment-selector compact-payment">
+                    <div class="payment-options">
+                        <button class="pay-btn" data-method="cash" title="Cash">
+                            <i class="fas fa-money-bill-alt"></i>
+                        </button>
+                        <button class="pay-btn" data-method="card" title="Card">
+                            <i class="fas fa-credit-card"></i>
+                        </button>
+                        <button class="pay-btn" data-method="virman" title="Transfer">
+                            <i class="fas fa-file-invoice"></i>
+                        </button>
+                        <button class="pay-btn" data-method="house" title="On House">
+                            <i class="fas fa-gifts"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <div id="order-list" class="order-list-container">
                     <div class="empty-msg" data-i18n="waiter.empty">No items</div>
                 </div>
@@ -284,17 +303,21 @@
                     <button id="btn-close-qty" class="icon-btn"> <i class="fas fa-arrow-left"></i></button>
                 </div>
                 <div class="qty-body">
-                    <div class="qty-display">
-                        <button class="qty-step" data-step="-1" aria-label="Decrease">−</button>
-                        <div class="qty-value" id="qty-value">1</div>
+                    <div class="qty-sidebar">
                         <button class="qty-step" data-step="1" aria-label="Increase">+</button>
+                        <div class="qty-value" id="qty-value">1</div>
+                        <button class="qty-step" data-step="-1" aria-label="Decrease">−</button>
                     </div>
-                    <div class="qty-grid" id="qty-grid-container">
-                        <!-- Buttons injected via JS -->
-                    </div>
-                    <div class="qty-footer">
-                        <button id="btn-clear-qty" class="text-btn danger" data-i18n="actions.clear">Clear</button>
-                        <button id="btn-apply-qty" class="btn-primary full-width large" data-i18n="actions.add">Add to order</button>
+                    
+                    <div class="qty-main">
+                        <div class="qty-grid" id="qty-grid-container">
+                            <!-- Buttons injected via JS -->
+                        </div>
+                        
+                        <div class="qty-footer">
+                            <button id="btn-clear-qty" class="text-btn danger" data-i18n="actions.clear">Clear</button>
+                            <button id="btn-apply-qty" class="btn-primary full-width large" data-i18n="actions.add">Add to order</button>
+                        </div>
                     </div>
                 </div>
              </div>

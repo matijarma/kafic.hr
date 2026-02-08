@@ -94,41 +94,67 @@
 
     <div class="container">
         <h1>Politika privatnosti</h1>
-        <p><strong>Datum stupanja na snagu:</strong> 4. veljače 2026.</p>
-        <p><strong>Predstavlja:</strong> Aning Film d.o.o., Opatovina 25, 10000 Zagreb, OIB 52144444572</p>
+        <p><strong>Datum stupanja na snagu:</strong> 6. veljače 2026.</p>
+        <p><strong>Izdavatelj:</strong> Aning Film d.o.o., Opatovina 25, 10000 Zagreb, OIB 52144444572</p>
 
-        <p>Kafić.hr ("mi", "naš" ili "nas") posvećen je zaštiti vaše privatnosti. Ova Politika privatnosti objašnjava kako naše Chrome proširenje i web aplikacija obrađuju vaše podatke. Korištenjem aplikacije Kafić.hr pristajete na prakse opisane u ovoj politici.</p>
+        <p>Ova politika jasno objašnjava što Kafić.hr sprema, što razmjenjuje između uređaja i koji tehnički podaci mogu biti vidljivi mrežnoj infrastrukturi.</p>
 
-        <h2>1. Prikupljanje i pohrana podataka</h2>
-        <p><strong>Ne prikupljamo, ne prenosimo i ne pohranjujemo vaše osobne podatke na vanjskim poslužiteljima.</strong></p>
-        <p>Kafić.hr radi po načelu "Local-First" i "Peer-to-Peer" (P2P). Svi podaci koje aplikacija generira (uključujući jelovnike, narudžbe, zapisnike sesije i postavke) pohranjuju se isključivo lokalno na vašem uređaju koristeći standardne tehnologije preglednika (LocalStorage i IndexedDB).</p>
+        <h2>1. Opseg i arhitektura</h2>
+        <p>Kafić.hr (web aplikacija i Chrome bočni panel) radi kao lokalno-prvo i uređaj-na-uređaj sustav. Ne postoji centralna Kafić.hr baza za vaš jelovnik i narudžbe.</p>
 
-        <h2>2. Sinkronizacija podataka</h2>
-        <p>Za suradnju između uređaja u stvarnom vremenu (primjerice između konobara i šanka), Kafić.hr koristi <a href="https://webrtc.org/" target="_blank">WebRTC</a> putem biblioteke <a href="https://github.com/dmotz/trystero" target="_blank">Trystero</a>. Time se uređaji povezuju izravno, bez centralne baze podataka.</p>
+        <h2>2. Podaci pohranjeni na vašem uređaju</h2>
+        <p>Radni podaci pohranjuju se lokalno u pregledniku (LocalStorage i IndexedDB), uključujući:</p>
         <ul>
-            <li><strong>Signalizacija:</strong> Lagani signalizacijski poslužitelj koristi se privremeno samo za uspostavu početne veze ("handshake") između uređaja putem sigurnog koda sobe. Nikakvi aplikacijski podaci (narudžbe, imena, jelovnici) ne ostaju trajno pohranjeni na tom poslužitelju.</li>
-            <li><strong>Enkripcija:</strong> Podaci koji se prenose između peer uređaja šifrirani su standardnim WebRTC sigurnosnim protokolima (DTLS/SRTP).</li>
+            <li>strukturu jelovnika, cijene i slike,</li>
+            <li>broj stolova i postavke aplikacije,</li>
+            <li>stanje sesije i narudžbi.</li>
+        </ul>
+        <p>Ti podaci ostaju na uređaju i korisničkom profilu preglednika na kojem su nastali.</p>
+
+        <h2>3. Sinkronizacija između uređaja</h2>
+        <p>Za rad u stvarnom vremenu između uređaja osoblja Kafić.hr koristi <a href="https://webrtc.org/" target="_blank" rel="noopener noreferrer">WebRTC</a> putem biblioteke <a href="https://github.com/dmotz/trystero" target="_blank" rel="noopener noreferrer">Trystero</a>.</p>
+        <ul>
+            <li><strong>Pronalaženje i signalizacija:</strong> Trystero koristi BitTorrent mehanizme i potražni poslužitelj (tracker) kako bi uređaji pronašli jedni druge i razmijenili podatke za uspostavu WebRTC veze.</li>
+            <li><strong>Promet nakon povezivanja:</strong> Nakon uspostave veze poruke aplikacije putuju izravno između uređaja (P2P).</li>
+            <li><strong>Sigurnost prijenosa:</strong> Prijenos između uređaja štiti se standardnim WebRTC sigurnosnim protokolima (DTLS/SRTP).</li>
         </ul>
 
-        <h2>3. Dozvole</h2>
-        <p>Kafić.hr Chrome proširenje traži specifične dozvole kako bi pravilno radilo:</p>
+        <h2>4. Što se šalje izvan uređaja sudionika</h2>
+        <p>Na razini aplikacijskog/protokolnog sloja, vanjska tracker infrastruktura prima samo podatke potrebne za povezivanje uređaja.</p>
         <ul>
-            <li><strong>sidePanel:</strong> Koristi se za prikaz sučelja aplikacije u bočnoj traci preglednika radi stalnog pristupa.</li>
-            <li><strong>storage:</strong> Koristi se za lokalno spremanje postavki, konfiguracije jelovnika i stanja aktivne sesije na vašem uređaju.</li>
-            <li><strong>camera (neobavezno):</strong> Traži se samo ako odaberete skeniranje QR koda za pridruživanje sesiji. Video podaci obrađuju se lokalno u memoriji i nikada se ne snimaju niti šalju.</li>
+            <li>Komunikacija prema BitTorrent trackeru sadrži samo identifikacijske podatke uređaja/sobe i signalizacijske podatke potrebne za uspostavu WebRTC veze.</li>
+            <li>Sadržaj jelovnika, narudžbi i imena osoblja ne zapisuje se na BitTorrent tracker.</li>
+            <li>Sadržaj aplikacije razmjenjuje se izravno između uređaja nakon povezivanja, a ne preko centralnog Kafić.hr sustava.</li>
         </ul>
 
-        <h2>4. Usluge trećih strana</h2>
-        <p>Ova aplikacija je samostalna. Ne koristi analitiku trećih strana, alate za praćenje ni oglasne mreže.</p>
+        <h2>5. Dozvole (Chrome proširenje)</h2>
+        <p>Proširenje traži samo dozvole potrebne za funkcionalnost:</p>
+        <ul>
+            <li><strong>sidePanel:</strong> prikaz aplikacije u bočnom panelu preglednika.</li>
+            <li><strong>storage:</strong> lokalna pohrana postavki i stanja sesije na vašem uređaju.</li>
+            <li><strong>camera (neobavezno):</strong> koristi se samo ako odaberete skeniranje QR koda; video se obrađuje u memoriji i nije namijenjen snimanju.</li>
+        </ul>
 
-        <h2>5. Vaša prava</h2>
-        <p>Budući da su svi podaci pohranjeni lokalno na vašem uređaju, imate potpunu kontrolu nad njima. Sve podatke aplikacije možete obrisati u bilo kojem trenutku brisanjem cache/storage podataka preglednika za proširenje ili korištenjem gumba "Factory Reset" unutar postavki aplikacije.</p>
+        <h2>6. Identitet domene: kafić.hr i xn--kafi-ota.hr</h2>
+        <p>kafić.hr je međunarodna domena (IDN). xn--kafi-ota.hr je ASCII/Punycode zapis iste domene koji koriste DNS i certifikati. To je ista adresa, zapisana na dva načina.</p>
+        <p>Ovisno o pravilima preglednika i načinu prikaza, možete vidjeti jedan ili drugi oblik.</p>
 
-        <h2>6. Promjene ove politike</h2>
-        <p>Ovu Politiku privatnosti možemo povremeno ažurirati. Svaka promjena bit će objavljena na ovoj stranici uz ažurirani datum stupanja na snagu.</p>
+        <h2>7. Usluge trećih strana i analitika</h2>
+        <p>Kafić.hr koristi Google Analytics (GA4) u osnovnom (non-enriched) načinu samo za agregirano praćenje interesa i aktivnosti aplikacije (primjerice ukupni promet i opseg korištenja).</p>
+        <p>Ne koristimo ga za detaljno profiliranje ponašanja korisnika, a za povezivanje uređaja i dalje se koristi WebRTC tracker/relay infrastruktura za pronalaženje i signalizaciju.</p>
 
-        <h2>7. Kontakt</h2>
-        <p>Ako imate pitanja o ovoj Politici privatnosti, kontaktirajte nas na:</p>
+        <h2>8. Vaša kontrola podataka</h2>
+        <p>Lokalne podatke aplikacije možete ukloniti u bilo kojem trenutku:</p>
+        <ul>
+            <li>korištenjem opcije za brisanje podataka (Reset App / Izbriši podatke), i/ili</li>
+            <li>brisanje pohrane stranice/proširenja u postavkama preglednika.</li>
+        </ul>
+
+        <h2>9. Ažuriranje politike</h2>
+        <p>Ako se ova politika promijeni, nova verzija bit će objavljena na ovoj stranici s novim datumom stupanja na snagu.</p>
+
+        <h2>10. Kontakt</h2>
+        <p>Pitanja o ovoj politici:</p>
         <p><a href="mailto:matija@aningfilm.hr">matija@aningfilm.hr</a></p>
 
         <div class="footer">

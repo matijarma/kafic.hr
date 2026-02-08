@@ -267,12 +267,12 @@ const updatePrivacyPolicyLanguage = (lang = getLanguage()) => {
 
 const HELP_GUIDE_CONTENT = {
     en: {
-        title: 'How to Use Kafic.hr',
-        intro: 'This guide walks through the complete flow: setup, joining devices, roles, settings, and how your data/networking works.',
+        title: 'How to Use Kafić.hr',
+        intro: 'This guide explains setup, joining devices, roles, settings, and how data and networking work in plain language.',
         flowTitle: 'Quick Visual Flow',
         flow: [
             { icon: 'fa-play', title: 'Start Session', text: 'One device starts the shift as host.' },
-            { icon: 'fa-qrcode', title: 'Join Devices', text: 'Other devices join by code, QR, paste, or link.' },
+            { icon: 'fa-qrcode', title: 'Join Devices', text: 'Other devices join by code, QR scan, paste, or invite link.' },
             { icon: 'fa-user-tie', title: 'Waiter', text: 'Select table, add items, send order.' },
             { icon: 'fa-cocktail', title: 'Bartender', text: 'Receive queue, mark orders complete.' },
             { icon: 'fa-cog', title: 'Manager', text: 'Edit menu, table count, hand mode, solo mode.' },
@@ -282,21 +282,42 @@ const HELP_GUIDE_CONTENT = {
             {
                 icon: 'fa-lock',
                 title: 'Data and Privacy',
-                lead: 'Everything is browser-local. There is no central database storing your menu or orders.',
+                lead: 'Business data stays local in your browser. There is no central Kafić.hr database for menus or orders.',
                 points: [
-                    'Menu, table count, preferences, images, and session state are stored in this browser only (LocalStorage + IndexedDB).',
-                    'The "Reset App" button on the Home screen erases that local app data and reloads the app.',
-                    'If you clear browser storage manually, app data is also removed.'
+                    'Menus, table count, preferences, images, and session state are stored on this device only (LocalStorage + IndexedDB).',
+                    'Reset App (or data reset in settings) removes that local data on this device and reloads the app.',
+                    'Clearing browser storage for this site removes the same local data.',
+                    'Google Analytics is used in standard (non-enriched) mode only for aggregate app interest/activity metrics, not detailed user-behavior profiling.'
                 ]
             },
             {
                 icon: 'fa-network-wired',
-                title: 'How devices connect (P2P)',
-                lead: 'Devices communicate peer-to-peer using WebRTC through Trystero.',
+                title: 'How devices connect (WebRTC + BitTorrent)',
+                lead: 'Devices communicate directly over WebRTC; Trystero uses BitTorrent discovery and tracker signaling.',
                 points: [
-                    'Trystero uses BitTorrent-style room/peer identification and tracker-based signaling for discovery/handshake.',
-                    'After peers connect, order traffic is direct device-to-device (P2P).',
-                    'If internet drops, the app shows offline status; syncing resumes once peers reconnect.'
+                    'Room and peer discovery use BitTorrent concepts (room hash/info hash and peer identifiers).',
+                    'BitTorrent tracker servers are used for discovery/signaling only: finding peers and exchanging WebRTC connection offers/answers.',
+                    'After connection is established, order data travels directly device-to-device (P2P).'
+                ]
+            },
+            {
+                icon: 'fa-shield-alt',
+                title: 'What goes to tracker infrastructure',
+                lead: 'Outside peer devices, tracker communication is limited to connection-level protocol data.',
+                points: [
+                    'BitTorrent tracker communication carries only identifiers/signaling needed to discover peers and establish WebRTC links.',
+                    'Menus, orders, and staff display names are not written to BitTorrent trackers.',
+                    'If internet drops, syncing pauses and resumes when devices reconnect.'
+                ]
+            },
+            {
+                icon: 'fa-globe',
+                title: 'Domain identity: kafić.hr and xn--kafi-ota.hr',
+                lead: 'These are two representations of the same domain.',
+                points: [
+                    'kafić.hr is an internationalized domain name (IDN) written with the Croatian letter ć.',
+                    'xn--kafi-ota.hr is the ASCII/Punycode form of that same domain used by DNS and TLS certificates.',
+                    'Browsers may display either form based on security/UI rules; both names point to the same domain.'
                 ]
             },
             {
@@ -320,8 +341,8 @@ const HELP_GUIDE_CONTENT = {
                 points: [
                     'Join screen accepts code, full URL, short join link, camera QR scan, or clipboard paste.',
                     'Valid session code enables Connect.',
-                    'Lobby shows QR + code for staff onboarding.',
-                    'Copy Link copies invite URL and uses share sheet when available.'
+                    'Lobby shows QR and code for staff onboarding.',
+                    'Copy Link copies invite URL and uses the share sheet when available.'
                 ]
             },
             {
@@ -331,7 +352,7 @@ const HELP_GUIDE_CONTENT = {
                     'Waiter: choose a table, browse menu categories/items, set quantity, send order.',
                     'Waiter order dock: review/remove lines before sending.',
                     'Bartender: incoming orders are grouped by table; mark complete when served.',
-                    'Completion events sync back so waiter table indicators clear.'
+                    'Completion events sync back so waiter table indicators are cleared.'
                 ]
             },
             {
@@ -352,42 +373,63 @@ const HELP_GUIDE_CONTENT = {
                     'Keep one stable host device for the shift.',
                     'Have all staff devices join once at shift start.',
                     'Avoid Reset App during active service.',
-                    'Use manager updates before service, then keep menu stable while operating.'
+                    'Make major menu changes before service, then keep menu structure stable while operating.'
                 ]
             }
         ]
     },
     hr: {
-        title: 'Kako koristiti Kafic.hr',
-        intro: 'Ove upute pokrivaju cijeli tijek rada: pokretanje, spajanje uređaja, uloge, postavke te način rada podataka i mreže.',
+        title: 'Kako koristiti Kafić.hr',
+        intro: 'Ove upute objašnjavaju pokretanje, spajanje uređaja, uloge, postavke te rad podataka i mreže jasnim jezikom.',
         flowTitle: 'Brzi vizualni tijek',
         flow: [
             { icon: 'fa-play', title: 'Pokreni smjenu', text: 'Jedan uređaj pokreće sesiju kao host.' },
-            { icon: 'fa-qrcode', title: 'Pridruži uređaje', text: 'Ostali uređaji ulaze kodom, QR-om ili linkom.' },
+            { icon: 'fa-qrcode', title: 'Pridruži uređaje', text: 'Ostali uređaji ulaze kodom, QR kodom, lijepljenjem ili poveznicom.' },
             { icon: 'fa-user-tie', title: 'Konobar', text: 'Odabir stola, unos stavki, slanje narudžbe.' },
             { icon: 'fa-cocktail', title: 'Šank', text: 'Prima narudžbe i označava gotove.' },
             { icon: 'fa-cog', title: 'Manager', text: 'Jelovnik, broj stolova, ruka, solo način.' },
-            { icon: 'fa-trash', title: 'Reset aplikacije', text: 'Briše sve lokalne podatke aplikacije.' }
+            { icon: 'fa-trash', title: 'Izbriši podatke', text: 'Briše sve lokalne podatke aplikacije s ovog preglednika.' }
         ],
         chapters: [
             {
                 icon: 'fa-lock',
                 title: 'Podaci i privatnost',
-                lead: 'Sve je lokalno u pregledniku. Ne postoji centralna baza podataka za vaš jelovnik i narudžbe.',
+                lead: 'Radni podaci ostaju lokalno u pregledniku. Ne postoji centralna baza Kafić.hr za jelovnik i narudžbe.',
                 points: [
-                    'Jelovnik, broj stolova, postavke, slike i stanje sesije spremaju se samo u ovom pregledniku (LocalStorage + IndexedDB).',
-                    'Gumb "Reset App" na početnom ekranu briše lokalne podatke aplikacije i ponovno učitava aplikaciju.',
-                    'Ako ručno obrišete browser storage, podaci aplikacije se također uklanjaju.'
+                    'Jelovnik, broj stolova, postavke, slike i stanje sesije spremaju se samo na ovom uređaju (LocalStorage + IndexedDB).',
+                    'Gumb za brisanje podataka (Reset App / Izbriši podatke) uklanja lokalne podatke s ovog uređaja i ponovno učitava aplikaciju.',
+                    'Ako ručno obrišete podatke stranice u pregledniku, uklanjaju se isti lokalni podaci.',
+                    'Google Analytics koristimo u osnovnom (non-enriched) načinu samo za agregirano praćenje interesa i aktivnosti aplikacije, ne za detaljno profiliranje ponašanja korisnika.'
                 ]
             },
             {
                 icon: 'fa-network-wired',
-                title: 'Kako se uređaji povezuju (P2P)',
-                lead: 'Uređaji komuniciraju peer-to-peer preko WebRTC-a uz Trystero.',
+                title: 'Kako se uređaji povezuju (WebRTC + BitTorrent)',
+                lead: 'Uređaji komuniciraju izravno preko WebRTC-a, a Trystero koristi BitTorrent mehanizme pronalaženja i signalizacije.',
                 points: [
-                    'Trystero koristi BitTorrent-stil identifikacije sobe/peerova i tracker signalizaciju za pronalazak i handshake.',
-                    'Nakon povezivanja promet narudžbi ide direktno uređaj-na-uređaj (P2P).',
-                    'Kad internet padne, prikazuje se offline status; sinkronizacija se nastavlja nakon ponovne veze.'
+                    'Za identifikaciju se koriste BitTorrent mehanizmi (sažetak sobe/info hash i identifikator uređaja).',
+                    'Za početno pronalaženje i razmjenu podataka za uspostavu veze koristi se potražni poslužitelj (tracker).',
+                    'Nakon uspostave veze promet narudžbi ide izravno uređaj-na-uređaj (P2P).'
+                ]
+            },
+            {
+                icon: 'fa-shield-alt',
+                title: 'Što ide prema potražnom poslužitelju',
+                lead: 'Izvan uređaja sudionika šalju se samo protokolni podaci potrebni za povezivanje.',
+                points: [
+                    'Prema BitTorrent potražnom poslužitelju (trackeru) šalju se samo identifikacijski i signalizacijski podaci potrebni za pronalaženje uređaja i uspostavu WebRTC veze.',
+                    'Sadržaj jelovnika, narudžbi i imena osoblja ne zapisuje se na BitTorrent tracker.',
+                    'Ako internet padne, sinkronizacija staje i nastavlja se nakon ponovnog spajanja uređaja.'
+                ]
+            },
+            {
+                icon: 'fa-globe',
+                title: 'Domena: kafić.hr i xn--kafi-ota.hr',
+                lead: 'To su dva zapisa iste domene.',
+                points: [
+                    'kafić.hr je međunarodna domena (IDN) zapisana s hrvatskim slovom ć.',
+                    'xn--kafi-ota.hr je ASCII/Punycode zapis iste domene koji koriste DNS i TLS certifikati.',
+                    'Preglednik može prikazati jedan ili drugi zapis; oba vode na istu domenu.'
                 ]
             },
             {
@@ -407,12 +449,12 @@ const HELP_GUIDE_CONTENT = {
             },
             {
                 icon: 'fa-link',
-                title: 'Pridruživanje i lobby',
+                title: 'Pridruživanje i čekaonica',
                 points: [
-                    'Ekran prijave prihvaća kod, puni URL, kratki join link, QR skeniranje ili paste.',
+                    'Ekran prijave prihvaća kod, puni URL, kratku poveznicu za pridruživanje, QR skeniranje ili lijepljenje iz međuspremnika.',
                     'Valjani kod aktivira gumb za spajanje.',
-                    'Lobby prikazuje QR i kod za dodavanje osoblja.',
-                    'Kopiraj link sprema invite URL i koristi share sheet gdje postoji.'
+                    'Čekaonica prikazuje QR i kod za dodavanje osoblja.',
+                    'Kopiraj poveznicu sprema pozivnu adresu i koristi sustavno dijeljenje gdje je podržano.'
                 ]
             },
             {
@@ -433,7 +475,7 @@ const HELP_GUIDE_CONTENT = {
                     'Ruka: lijevo/desno ergonomija sučelja.',
                     'Solo način: više uloga na istom uređaju.',
                     'Oboji: u konobarskom prikazu koristi nijanse kategorija umjesto slika.',
-                    'Menu tree: dodavanje/uređivanje/brisanje stavki, hijerarhija, cijene i slike.'
+                    'Uređivanje jelovnika: dodavanje/uređivanje/brisanje stavki, hijerarhija, cijene i slike.'
                 ]
             },
             {
@@ -443,7 +485,7 @@ const HELP_GUIDE_CONTENT = {
                     'Držite jedan stabilan host uređaj tijekom smjene.',
                     'Spojite sve uređaje osoblja na početku smjene.',
                     'Izbjegavajte reset tijekom aktivnog rada.',
-                    'Veće izmjene jelovnika napravite prije početka smjene.'
+                    'Veće izmjene jelovnika napravite prije početka smjene, a tijekom rada održavajte jelovnik stabilnim.'
                 ]
             }
         ]

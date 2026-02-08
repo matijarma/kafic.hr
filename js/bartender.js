@@ -64,12 +64,30 @@ const createTableCard = (tableId) => {
 
 const addOrderToCard = (card, data) => {
     const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const itemsHtml = data.items.map(item => `
-        <div class="feed-item">
-            <div class="feed-item-name"><span class="qty">${item.qty}x</span> ${item.label}</div>
+    const itemsHtml = data.items.map(item => {
+        const iconMap = { cash: 'money-bill-alt', card: 'credit-card', virman: 'file-invoice', house: 'gift' };
+        const payIcon = item.payment 
+            ? `<i class="fas fa-${iconMap[item.payment]} pay-icon-large" title="${item.payment}"></i>` 
+            : '';
+        
+        let style = '';
+        if (item.color) {
+            const [r,g,b] = item.color;
+            // Use a very light background + a left border for color identification
+            style = `style="background: rgba(${r},${g},${b},0.12); border-left: 4px solid rgb(${r},${g},${b});"`;
+        }
+
+        return `
+        <div class="feed-item" ${style}>
+            <div class="feed-item-name">
+                <span class="qty">${item.qty}x</span> 
+                <span class="label-text">${item.label}</span>
+                ${payIcon}
+            </div>
             ${item.context ? `<div class="feed-item-context">${item.context}</div>` : ''}
         </div>
-    `).join('');
+        `;
+    }).join('');
 
     const orderEl = document.createElement('div');
     orderEl.className = 'feed-order';
