@@ -1,4 +1,4 @@
-import { initNetwork, broadcast } from 'network';
+import { initNetwork, broadcast, selfId } from 'network';
 import { state, resetWaiterState } from 'state';
 import { generateJoinCode, roomIdFromCode, saveSession, loadSession, clearSavedSession, syncStateToSession } from 'session';
 import { initWaiter, refreshWaiter, onOrderCompleted, canNavigateBack as canWaiterNavigateBack, navigateBack as navigateWaiterBack } from 'waiter';
@@ -7,6 +7,8 @@ import { initManager } from 'manager';
 import { renderQR } from 'qr';
 import { initI18n, t, setLanguage, getLanguage, updateDOM } from 'i18n';
 import { initUX, toast, confirm as confirmModal, registerModal, popModal } from 'ux';
+import { getMenu, saveMenu } from 'data';
+import { getImage, saveImage } from 'db';
 
 // Elements
 const views = {
@@ -73,8 +75,16 @@ const btnCloseHelp = document.getElementById('btn-close-help');
 const helpModalTitle = document.getElementById('help-modal-title');
 const helpModalContent = document.getElementById('help-modal-content');
 
+// Sync Controls
+const syncToggleJoin = document.getElementById('sync-toggle-join');
+const syncStatusJoin = document.getElementById('sync-status-join');
+const syncToggleLobby = document.getElementById('sync-toggle-lobby');
+const syncStatusLobby = document.getElementById('sync-status-lobby');
+const syncLoading = document.getElementById('sync-loading');
+
 // Connection Indicator (Header)
-const headerConn = document.getElementById('header-conn');
+const headerConns = document.querySelectorAll('.header-conn-indicator');
+const btnToggleThemeBartender = document.getElementById('btn-toggle-theme-bartender');
 const arrowLeft = document.getElementById('arrow-left');
 const arrowRight = document.getElementById('arrow-right');
 
@@ -194,26 +204,23 @@ const handleBackPress = (source = 'ui') => {
     const currentView = document.body.dataset.view || 'setup';
 
     if (currentView === 'waiter') {
-        exitBackArmedUntil = 0;
         if (canWaiterNavigateBack()) {
+            exitBackArmedUntil = 0;
             navigateWaiterBack();
             return true;
         }
-        returnToLobby();
-        return true;
-    }
-
-    if (currentView === 'bartender' || currentView === 'manager') {
+        // At root waiter screen: fall through to exit logic
+    } else if (currentView === 'bartender' || currentView === 'manager') {
         exitBackArmedUntil = 0;
         returnToLobby();
         return true;
-    }
-
-    const activeSlide = getActiveSetupSlideId();
-    if (activeSlide === 'join' || activeSlide === 'lobby') {
-        exitBackArmedUntil = 0;
-        goToSlide('home');
-        return true;
+    } else {
+        const activeSlide = getActiveSetupSlideId();
+        if (activeSlide === 'join' || activeSlide === 'lobby') {
+            exitBackArmedUntil = 0;
+            goToSlide('home');
+            return true;
+        }
     }
 
     if (source !== 'system') return true;
@@ -375,6 +382,17 @@ const HELP_GUIDE_CONTENT = {
                     'Avoid Reset App during active service.',
                     'Make major menu changes before service, then keep menu structure stable while operating.'
                 ]
+            },
+            {
+                icon: 'fa-exchange-alt',
+                title: 'Menu Synchronization',
+                lead: 'Sync Mode allows devices to share the same menu and color settings.',
+                points: [
+                    'Send (Host): Pushes your current menu structure and images to connected devices.',
+                    'Receive (Joiner): Overwrites your local menu with the one received from the Host.',
+                    'None: Devices operate independently with their own local menus.',
+                    'Syncing happens automatically when devices connect or when a new peer joins.'
+                ]
             }
         ]
     },
@@ -486,6 +504,17 @@ const HELP_GUIDE_CONTENT = {
                     'Spojite sve uređaje osoblja na početku smjene.',
                     'Izbjegavajte reset tijekom aktivnog rada.',
                     'Veće izmjene jelovnika napravite prije početka smjene, a tijekom rada održavajte jelovnik stabilnim.'
+                ]
+            },
+            {
+                icon: 'fa-exchange-alt',
+                title: 'Sinkronizacija Jelovnika',
+                lead: 'Način sinkronizacije omogućuje uređajima dijeljenje istog jelovnika i postavki boja.',
+                points: [
+                    'Šalji (Host): Šalje vaš trenutni cjenik i slike povezanim uređajima.',
+                    'Primaj (Pridruženi): Zamjenjuje vaš lokalni cjenik onim primljenim od Hosta.',
+                    'Ne (None): Uređaji rade neovisno s vlastitim lokalnim cjenicima.',
+                    'Sinkronizacija se događa automatski kod spajanja ili ulaska novog uređaja.'
                 ]
             }
         ]
@@ -670,6 +699,7 @@ function bootstrap() {
     // 6. Events
     setupEvents();
     bindConnectivity();
+    initSyncUI();
     setupInstallPrompt();
     syncJoinControls();
     registerServiceWorker();
@@ -710,7 +740,6 @@ function setupEvents() {
     btnHost.onclick = startHost;
     btnJoin.onclick = () => {
         goToSlide('join');
-        focusJoinInput();
     };
     
     // Global Header Actions
@@ -721,6 +750,7 @@ function setupEvents() {
     });
     
     btnToggleTheme.onclick = cycleTheme;
+    if (btnToggleThemeBartender) btnToggleThemeBartender.onclick = cycleTheme;
     btnToggleLang.onclick = cycleLang;
     
     btnResetApp.onclick = async () => {
@@ -1084,18 +1114,32 @@ function connectNetwork(restoredSession = null) {
     hasNetwork = true;
     // setLobbyStatus(t('setup.connecting'), 'info');
     
+    // Immediate Feedback: Initializing...
+    headerConns.forEach(el => {
+        el.classList.add('connecting');
+        const countLabel = el.querySelector('.count');
+        if (countLabel) countLabel.textContent = t('setup.conn_init');
+    });
+    
     try {
         const sessionData = restoredSession || loadSession();
         initNetwork(state.roomId, (data, peerId) => {
+            if (!data || typeof data !== 'object') return;
             if (data.type === 'hello') {
                 state.peers[peerId] = { name: data.name, role: data.role };
                 updatePeerUI();
             }
             if (data.type === 'new-order') {
+                if (!state.soloMode && data.senderId && data.senderId === selfId) {
+                    return;
+                }
                 onOrderReceived(data);
             }
             if (data.type === 'order-completed') {
                 onOrderCompleted(data);
+            }
+            if (['sync-start', 'sync-image', 'sync-menu'].includes(data.type)) {
+                handleSyncData(data);
             }
         }, (status) => {
             if (status.type === 'leave' && status.peerId) delete state.peers[status.peerId];
@@ -1104,6 +1148,7 @@ function connectNetwork(restoredSession = null) {
             }
             if (status.type === 'join') {
                 announceSelf(status.peerId);
+                try { sendSyncData(status.peerId); } catch(e) { console.error('Sync send failed', e); }
                 toast(t('alerts.peer_joined'), 'info');
             }
             if (status.type === 'leave') toast(t('alerts.peer_left'), 'info');
@@ -1138,24 +1183,35 @@ function updatePeerUI() {
     const count = Object.keys(state.peers).length;
     const online = navigator.onLine;
     
-    if (headerConn) {
+    headerConns.forEach(headerConn => {
         const dot = headerConn.querySelector('.dot');
         const countLabel = headerConn.querySelector('.count');
         
+        headerConn.classList.remove('active', 'error', 'connecting');
+
         if (!online) {
             headerConn.classList.add('error');
-            headerConn.classList.remove('active');
             if (countLabel) countLabel.textContent = t('setup.conn_offline_bi');
         } else if (count > 0) {
             headerConn.classList.add('active');
-            headerConn.classList.remove('error');
             if (countLabel) {
                 const key = count === 1 ? 'setup.conn_peer_bi' : 'setup.conn_peers_bi';
                 countLabel.textContent = t(key, { count });
             }
         } else {
-            headerConn.classList.remove('active', 'error');
-            if (countLabel) countLabel.textContent = t('setup.conn_waiting_bi');
+            // No peers
+            if (state.sessionCode && hasNetwork) {
+                headerConn.classList.add('connecting');
+                // In session and network active -> Waiting/Looking
+                if (state.isHost) {
+                     if (countLabel) countLabel.textContent = t('setup.conn_hosting');
+                } else {
+                     if (countLabel) countLabel.textContent = t('setup.conn_joining');
+                }
+            } else {
+                // No session or not started
+                 if (countLabel) countLabel.textContent = t('setup.waiting_short');
+            }
         }
         
         // Click handler for details (simple toast for now)
@@ -1167,7 +1223,27 @@ function updatePeerUI() {
                 toast(`${t('setup.connected_short')}: ${names}`, 'success');
             }
         };
-    }
+    });
+
+    // Sync Controls
+    const hasPeers = count > 0;
+    // Only show "Active" status text for Slave when actually syncing?
+    // User wants Host toggle to stay visible but locked.
+    // "the whole sync thing should just disapear" -> interpreted as "Syncing..." text shouldn't be permanent.
+    // I will show Toggle (Locked) for Host.
+    // For Slave, I will show Toggle (Locked). The loading overlay handles the "active" feedback.
+    
+    const updateSyncState = (toggle, status) => {
+        if (!toggle || !status) return;
+        
+        // Always show toggle, but lock if connected
+        toggle.classList.remove('hidden');
+        status.classList.add('hidden');
+        toggle.classList.toggle('disabled', hasPeers);
+    };
+    
+    updateSyncState(syncToggleJoin, syncStatusJoin);
+    updateSyncState(syncToggleLobby, syncStatusLobby);
 }
 
 function persist() {
@@ -1392,4 +1468,171 @@ function registerServiceWorker() {
     }).catch(() => {
         if (navigator.onLine) toast(t('alerts.sw_failed'), 'error');
     });
+}
+
+// --- SYNC LOGIC ---
+
+function initSyncUI() {
+    const saved = localStorage.getItem('barlink_sync_mode') || 'nosync';
+    setSyncMode(saved, false);
+
+    const bindToggle = (el) => {
+        if (!el) return;
+        el.querySelectorAll('button').forEach(btn => {
+            btn.onclick = () => {
+                if (Object.keys(state.peers).length > 0) return;
+                setSyncMode(btn.dataset.val);
+            };
+        });
+    };
+    
+    bindToggle(syncToggleJoin);
+    bindToggle(syncToggleLobby);
+
+    document.querySelectorAll('.info-tooltip-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            if (btn.dataset.help === 'sync') {
+                toast(t('setup.sync_tooltip'), 'info');
+            }
+        };
+    });
+}
+
+function setSyncMode(mode, save = true) {
+    if (!['nosync', 'slave', 'host'].includes(mode)) return;
+    state.syncMode = mode;
+    if (save) localStorage.setItem('barlink_sync_mode', mode);
+
+    const updateToggle = (el) => {
+        if (!el) return;
+        el.dataset.state = mode;
+        el.querySelectorAll('button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.val === mode);
+        });
+    };
+
+    updateToggle(syncToggleJoin);
+    updateToggle(syncToggleLobby);
+    updatePeerUI();
+}
+
+async function sendSyncData(targetId) {
+    if (state.syncMode !== 'host') return;
+    
+    // 1. Gather Images
+    const menu = getMenu();
+    const imageIds = new Set();
+    const traverse = (items) => {
+        items.forEach(i => {
+            if(i.imageId) imageIds.add(i.imageId);
+            if(i.children) traverse(i.children);
+        });
+    };
+    traverse(menu);
+    
+    const totalImages = imageIds.size;
+    
+    // 2. Send Start
+    broadcast({ type: 'sync-start', count: totalImages }, targetId);
+    
+    // 3. Send Images
+    let i = 0;
+    for (const id of imageIds) {
+        try {
+            const blob = await getImage(id);
+            if (blob) {
+                const b64 = await blobToBase64(blob);
+                broadcast({ type: 'sync-image', id, data: b64, index: i + 1, total: totalImages }, targetId);
+            }
+        } catch(e) {}
+        i++;
+        await new Promise(r => setTimeout(r, 50)); // Throttling
+    }
+    
+    // 4. Send Menu (End)
+    const payload = {
+        type: 'sync-menu',
+        menu: menu,
+        timestamp: Date.now()
+    };
+    broadcast(payload, targetId);
+}
+
+const blobToBase64 = (blob) => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+});
+
+let syncTimer = null;
+let lastSyncSuccess = 0;
+const SYNC_TIMEOUT_MS = 20000;
+const SYNC_COOLDOWN_MS = 10000;
+
+async function handleSyncData(data) {
+    if (state.syncMode !== 'slave') return;
+    
+    // Prevent ghost re-syncs
+    if (data.type === 'sync-start' && Date.now() - lastSyncSuccess < SYNC_COOLDOWN_MS) {
+        return;
+    }
+    
+    const loadingText = document.getElementById('sync-loading-text');
+    const log = document.getElementById('sync-log');
+    
+    const logMsg = (msg, isError = false) => {
+        if(log) {
+            const line = document.createElement('div');
+            line.textContent = `> ${msg}`;
+            if (isError) line.style.color = '#ff6b6b';
+            log.prepend(line);
+        }
+    };
+
+    if (data.type === 'sync-start') {
+        if (syncLoading) syncLoading.classList.remove('hidden');
+        if (log) log.innerHTML = '';
+        if (loadingText) loadingText.textContent = t('setup.sync_wait');
+        logMsg(t('setup.sync_start', { count: data.count }));
+        
+        if (syncTimer) clearTimeout(syncTimer);
+        syncTimer = setTimeout(() => {
+            if (syncLoading && !syncLoading.classList.contains('hidden')) {
+                syncLoading.classList.add('hidden');
+                toast(t('setup.sync_timeout'), 'error');
+            }
+        }, SYNC_TIMEOUT_MS);
+    }
+    
+    // Only process images/menu if sync is active (window visible)
+    if (!syncLoading || syncLoading.classList.contains('hidden')) return;
+
+    if (data.type === 'sync-image') {
+        logMsg(t('setup.sync_img', { index: data.index, total: data.total }));
+        try {
+            const res = await fetch(data.data);
+            const blob = await res.blob();
+            await saveImage(blob, data.id);
+        } catch(e) {
+            logMsg(t('setup.sync_err_img', { id: data.id }), true);
+        }
+    }
+    
+    if (data.type === 'sync-menu') {
+        if (syncTimer) clearTimeout(syncTimer);
+        logMsg(t('setup.sync_final'));
+        setTimeout(() => {
+            saveMenu(data.menu);
+            
+            logMsg(t('setup.sync_done'));
+            toast(t('setup.sync_complete') || t('setup.sync_done'), 'success');
+            
+            lastSyncSuccess = Date.now();
+            
+            setTimeout(() => {
+                if (syncLoading) syncLoading.classList.add('hidden');
+            }, 1000);
+        }, 500);
+    }
 }

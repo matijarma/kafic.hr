@@ -10,7 +10,8 @@ export const state = {
     currentOrder: [], // Items pending send
     barOrders: [], // List of received orders
     unclearedTables: new Set(), // Set of tableIds that have pending orders
-    soloMode: false // New solo mode toggle
+    soloMode: false, // New solo mode toggle
+    syncMode: 'nosync' // 'nosync' | 'slave' | 'host'
 };
 
 export const resetWaiterState = () => {

@@ -1,7 +1,7 @@
-import { getMenu, getTables, isMenuColorizeEnabled } from 'data';
+import { getMenu, getTables } from 'data';
 import { getImage } from 'db';
 import { state, resetWaiterState } from 'state';
-import { broadcast } from 'network';
+import { broadcast, selfId } from 'network';
 import { onOrderReceived } from 'bartender';
 import { t } from 'i18n';
 import { toast, registerModal, popModal, confirm } from 'ux';
@@ -25,6 +25,9 @@ const qtyModal = document.getElementById('qty-modal');
 const qtyGrid = document.getElementById('qty-grid-container');
 const qtyTitle = document.getElementById('qty-item-title');
 const qtyPath = document.getElementById('qty-item-path');
+const qtyImageBtn = document.getElementById('qty-item-image-btn');
+const qtyImagePreview = document.getElementById('qty-image-preview');
+const qtyImagePreviewImg = document.getElementById('qty-image-preview-img');
 const qtyValue = document.getElementById('qty-value');
 const closeQtyBtn = document.getElementById('btn-close-qty');
 const clearQtyBtn = document.getElementById('btn-clear-qty');
@@ -40,6 +43,16 @@ let lastGridCount = 0;
 let gridObserver = null;
 let lastOrderCount = 0;
 let orderObserver = null;
+let qtyImageObjectUrl = '';
+let qtyImageLoadToken = 0;
+let qtyImageHoldTimer = null;
+
+const QTY_IMAGE_HOLD_MS = 260;
+
+const getItemPriceText = (item) => {
+    if (!item || item.price === null || item.price === undefined) return '';
+    return String(item.price).trim();
+};
 
 const COLORIZE_PALETTE = [
     [244, 114, 182],
@@ -109,7 +122,35 @@ const buildTopLevelColorMap = () => {
     return map;
 };
 
+const containsItem = (parent, target) => {
+    if (parent === target) return true;
+    if (parent.id && target.id && parent.id === target.id) return true;
+    if (!parent.children) return false;
+    for (const child of parent.children) {
+        if (containsItem(child, target)) return true;
+    }
+    return false;
+};
+
+const findRootOf = (targetItem) => {
+    const menu = getMenu() || [];
+    for (const root of menu) {
+        if (containsItem(root, targetItem)) return root;
+    }
+    return null;
+};
+
 const resolveTopLevelKey = (item) => {
+    // 1. Try to find the true root from the global menu (Correct for favorites)
+    const root = findRootOf(item);
+    if (root) {
+        if (root.id) return root.id;
+        const menu = getMenu() || [];
+        const idx = menu.indexOf(root);
+        return `root-index-${idx}`;
+    }
+
+    // 2. Fallback to current path context
     const topLevel = state.currentPath.length > 0 ? state.currentPath[0] : item;
     if (!topLevel) return '';
     if (topLevel.id) return topLevel.id;
@@ -125,19 +166,6 @@ const buildColorizedBackground = (rgb, depth) => {
     const alphaA = Math.max(0.08, 0.24 - (depth * 0.035));
     const alphaB = Math.max(0.04, alphaA * 0.62);
     return `linear-gradient(155deg, rgba(${r}, ${g}, ${b}, ${alphaA}), rgba(${r}, ${g}, ${b}, ${alphaB}))`;
-};
-
-const applyImageTileBackground = (el, item, onSuccess = null) => {
-    if (!item.imageId) return;
-    getImage(item.imageId).then(blob => {
-        if (!blob || !el.isConnected) return;
-        const url = URL.createObjectURL(blob);
-        el.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${url})`;
-        el.style.backgroundSize = 'cover';
-        el.style.backgroundPosition = 'center';
-        el.style.textShadow = '0 1px 3px rgba(0,0,0,0.8)';
-        if (typeof onSuccess === 'function') onSuccess();
-    });
 };
 
 const applyColorizedTileBackground = (el, item, topLevelColorMap) => {
@@ -168,28 +196,23 @@ export const initWaiter = () => {
     });
 
     closeQtyBtn.onclick = () => {
-        qtyModal.removeAttribute('open');
-        popModal();
-        pendingItem = null;
+        closeQtyModal();
     };
     
     // Qty Modal Close on Backdrop
     qtyModal.onclick = (e) => {
         if (e.target === qtyModal) {
-             qtyModal.removeAttribute('open');
-             popModal();
-             pendingItem = null;
+             closeQtyModal();
         }
     };
 
     buildQtyGrid();
+    bindQtyImagePreview();
     updateQtyDisplay();
     render();
     observeGrid();
     observeOrderList();
     bindClearHold();
-
-    window.addEventListener('menu-colorize-change', render);
 };
 
 const scheduleGridLayout = (count) => {
@@ -431,19 +454,41 @@ const renderMenu = (items) => {
         : `${state.currentTable.id} › ${t('waiter.menu_root')}`;
     
     grid.innerHTML = '';
-    const visibleItems = (items || []).filter(item => (item.label || '').trim().length > 0);
-    const colorizeEnabled = isMenuColorizeEnabled();
+    
+    // Favorites Logic
+    const currentCategory = state.currentPath.length > 0
+        ? state.currentPath[state.currentPath.length - 1]
+        : null;
+    const allFavs = getAllFavorites(getMenu()).filter(item => {
+        if (!currentCategory) return true;
+        if (currentCategory.id && item.id) return item.id !== currentCategory.id;
+        return item !== currentCategory;
+    });
+    const favIds = new Set(allFavs.map(i => i.id));
+    
+    // Filter regular items (current level) to exclude favorites
+    const regularItems = (items || []).filter(item => 
+        (item.label || '').trim().length > 0 && !favIds.has(item.id)
+    );
+    
+    // Combine: Favorites first, then regular items
+    const visibleItems = [...allFavs, ...regularItems];
+
     if (grid) {
-        grid.classList.toggle('colorized', colorizeEnabled);
+        grid.classList.add('colorized');
     }
-    const topLevelColorMap = colorizeEnabled ? buildTopLevelColorMap() : null;
+    const topLevelColorMap = buildTopLevelColorMap();
+    
     visibleItems.forEach(item => {
         const el = document.createElement('button');
         el.className = 'grid-item';
+        const isFav = favIds.has(item.id);
+        const starHtml = isFav ? '<div class="fav-star"><i class="fas fa-star"></i></div>' : '';
         
         if (item.children && item.children.length > 0) {
             el.style.borderTop = `4px solid ${item.color || '#999'}`;
             el.innerHTML = `
+                ${starHtml}
                 <div class="grid-item-content">
                     <i class="fas fa-cubes tile-icon" aria-hidden="true"></i>
                     <span class="grid-item-label">${item.label}</span>
@@ -453,32 +498,32 @@ const renderMenu = (items) => {
                 state.currentPath.push(item);
                 render();
             };
-            if (colorizeEnabled) {
-                applyColorizedTileBackground(el, item, topLevelColorMap);
-            } else if (item.imageId) {
-                applyImageTileBackground(el, item, () => {
-                    el.style.borderTop = 'none';
-                });
-            }
+            applyColorizedTileBackground(el, item, topLevelColorMap);
         } else {
             el.innerHTML = `
+                ${starHtml}
                 <div class="grid-item-content">
                     <i class="fas fa-wine-glass-alt" aria-hidden="true"></i>
                     <span class="grid-item-label">${item.label}</span>
                 </div>
-                <small class="grid-item-price">${item.price||''}</small>
             `;
             el.onclick = () => openQty(item);
 
-            if (colorizeEnabled) {
-                applyColorizedTileBackground(el, item, topLevelColorMap);
-            } else if (item.imageId) {
-                applyImageTileBackground(el, item);
-            }
+            applyColorizedTileBackground(el, item, topLevelColorMap);
         }
         grid.appendChild(el);
     });
     scheduleGridLayout(visibleItems.length);
+};
+
+const getAllFavorites = (items) => {
+    let favs = [];
+    if (!items) return favs;
+    items.forEach(item => {
+        if (item.isFavorite) favs.push(item);
+        if (item.children) favs.push(...getAllFavorites(item.children));
+    });
+    return favs;
 };
  
 const handleBack = () => {
@@ -502,7 +547,9 @@ export const navigateBack = () => {
 const openQty = (item) => {
     pendingItem = item;
     pendingQty = 1;
-    qtyTitle.textContent = item.label;
+    const priceText = getItemPriceText(item);
+    qtyTitle.textContent = priceText ? `${item.label} (${priceText})` : item.label;
+    loadQtyItemImage(item);
     const context = state.currentPath.map(p => p.label).join(' › ');
     if (qtyPath) {
         qtyPath.textContent = context;
@@ -511,8 +558,7 @@ const openQty = (item) => {
     updateQtyDisplay();
     qtyModal.setAttribute('open', 'true');
     registerModal(() => {
-        qtyModal.removeAttribute('open');
-        pendingItem = null;
+        closeQtyModal(false);
     });
 };
 
@@ -521,12 +567,9 @@ const confirmQty = (qty) => {
     const context = state.currentPath.map(p => p.label).join(' ');
     const finalQty = clampQty(qty);
     
-    let color = null;
-    if (isMenuColorizeEnabled()) {
-         const topMap = buildTopLevelColorMap();
-         const key = resolveTopLevelKey(pendingItem);
-         color = topMap.get(key);
-    }
+    const topMap = buildTopLevelColorMap();
+    const key = resolveTopLevelKey(pendingItem);
+    const color = topMap.get(key) || null;
     
     const itemLabel = pendingItem.label;
     state.currentOrder.push({
@@ -537,12 +580,102 @@ const confirmQty = (qty) => {
         color
     });
     
-    qtyModal.removeAttribute('open');
-    popModal(); // Remove history state
-    pendingItem = null;
+    closeQtyModal();
     const addedMsg = t('alerts.item_added', { qty: finalQty, item: itemLabel });
     toast(addedMsg !== 'alerts.item_added' ? addedMsg : `${finalQty}x ${itemLabel} added`, 'success');
     renderOrderDock();
+};
+
+const clearQtyImageObjectUrl = () => {
+    if (!qtyImageObjectUrl) return;
+    URL.revokeObjectURL(qtyImageObjectUrl);
+    qtyImageObjectUrl = '';
+};
+
+const hideQtyImagePreview = () => {
+    if (qtyImagePreview) qtyImagePreview.classList.add('hidden');
+};
+
+const showQtyImagePreview = () => {
+    if (!qtyImageObjectUrl || !qtyImagePreview) return;
+    qtyImagePreview.classList.remove('hidden');
+};
+
+const clearQtyImageHoldTimer = () => {
+    if (qtyImageHoldTimer) clearTimeout(qtyImageHoldTimer);
+    qtyImageHoldTimer = null;
+};
+
+const resetQtyImageState = (hideButton = true) => {
+    clearQtyImageHoldTimer();
+    hideQtyImagePreview();
+    clearQtyImageObjectUrl();
+    if (qtyImagePreviewImg) qtyImagePreviewImg.removeAttribute('src');
+    if (qtyImageBtn) {
+        if (hideButton) qtyImageBtn.classList.add('hidden');
+        qtyImageBtn.disabled = true;
+    }
+};
+
+const loadQtyItemImage = async (item) => {
+    const token = ++qtyImageLoadToken;
+    resetQtyImageState(true);
+    if (!item || !item.imageId || !qtyImageBtn || !qtyImagePreviewImg) return;
+    try {
+        const blob = await getImage(item.imageId);
+        if (!blob || token !== qtyImageLoadToken || !pendingItem || pendingItem.id !== item.id) return;
+        qtyImageObjectUrl = URL.createObjectURL(blob);
+        qtyImagePreviewImg.src = qtyImageObjectUrl;
+        qtyImageBtn.disabled = false;
+        qtyImageBtn.classList.remove('hidden');
+    } catch (e) {
+        resetQtyImageState(true);
+    }
+};
+
+const onQtyImagePressStart = (e) => {
+    if (!qtyImageBtn || qtyImageBtn.disabled || !qtyImageObjectUrl) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    if (qtyImageBtn.setPointerCapture) {
+        try { qtyImageBtn.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    clearQtyImageHoldTimer();
+    hideQtyImagePreview();
+    qtyImageHoldTimer = setTimeout(() => {
+        showQtyImagePreview();
+    }, QTY_IMAGE_HOLD_MS);
+};
+
+const onQtyImagePressEnd = (e) => {
+    clearQtyImageHoldTimer();
+    hideQtyImagePreview();
+    if (!qtyImageBtn || !qtyImageBtn.releasePointerCapture) return;
+    try {
+        if (qtyImageBtn.hasPointerCapture(e.pointerId)) {
+            qtyImageBtn.releasePointerCapture(e.pointerId);
+        }
+    } catch (err) {}
+};
+
+const bindQtyImagePreview = () => {
+    if (!qtyImageBtn) return;
+    qtyImageBtn.addEventListener('pointerdown', onQtyImagePressStart);
+    qtyImageBtn.addEventListener('pointerup', onQtyImagePressEnd);
+    qtyImageBtn.addEventListener('pointercancel', onQtyImagePressEnd);
+    qtyImageBtn.addEventListener('lostpointercapture', () => {
+        clearQtyImageHoldTimer();
+        hideQtyImagePreview();
+    });
+    qtyImageBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+};
+
+const closeQtyModal = (syncHistory = true) => {
+    qtyModal.removeAttribute('open');
+    pendingItem = null;
+    qtyImageLoadToken++;
+    resetQtyImageState(true);
+    if (syncHistory) popModal();
 };
 
 const renderOrderDock = () => {
@@ -608,14 +741,18 @@ const sendOrder = () => {
         type: 'new-order',
         tableId: state.currentTable.id,
         items: itemsToSend,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        senderId: selfId
     };
     
     // 1. Try to send to peers
     const sent = broadcast(payload);
     
-    // 2. Local Echo (always process for self)
-    onOrderReceived(payload);
+    // 2. Local echo only in solo mode.
+    // Outside solo mode, this device should not receive its own orders.
+    if (state.soloMode) {
+        onOrderReceived(payload);
+    }
     
     // 3. Feedback
     state.unclearedTables.add(state.currentTable.id);

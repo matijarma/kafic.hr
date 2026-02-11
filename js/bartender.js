@@ -1,5 +1,6 @@
 import { t } from 'i18n';
 import { toast } from 'ux';
+import { state } from 'state';
 
 const feed = document.getElementById('bartender-feed');
 const tableCards = new Map();
@@ -64,12 +65,15 @@ const createTableCard = (tableId) => {
 
 const addOrderToCard = (card, data) => {
     const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // Extract payment from first item (batch level)
+    const payment = data.items[0]?.payment;
+    const iconMap = { cash: 'money-bill-alt', card: 'credit-card', virman: 'file-invoice', house: 'gift' };
+    const payIcon = payment 
+        ? `<span class="order-payment-icon"><i class="fas fa-${iconMap[payment]}" title="${payment}"></i></span>` 
+        : '';
+
     const itemsHtml = data.items.map(item => {
-        const iconMap = { cash: 'money-bill-alt', card: 'credit-card', virman: 'file-invoice', house: 'gift' };
-        const payIcon = item.payment 
-            ? `<i class="fas fa-${iconMap[item.payment]} pay-icon-large" title="${item.payment}"></i>` 
-            : '';
-        
         let style = '';
         if (item.color) {
             const [r,g,b] = item.color;
@@ -82,7 +86,6 @@ const addOrderToCard = (card, data) => {
             <div class="feed-item-name">
                 <span class="qty">${item.qty}x</span> 
                 <span class="label-text">${item.label}</span>
-                ${payIcon}
             </div>
             ${item.context ? `<div class="feed-item-context">${item.context}</div>` : ''}
         </div>
@@ -93,7 +96,10 @@ const addOrderToCard = (card, data) => {
     orderEl.className = 'feed-order';
     orderEl.innerHTML = `
         <div class="feed-order-header">
-            <span class="feed-order-time">${time}</span>
+            <div class="feed-meta">
+                <span class="feed-order-time">${time}</span>
+                ${payIcon}
+            </div>
             <button class="feed-btn feed-order-done" data-action="done">${t('actions.mark_done')}</button>
         </div>
         <div class="feed-order-items">
@@ -144,6 +150,7 @@ const render = () => {
 };
 
 const notify = (data) => {
+    if (state.soloMode) return;
     try {
         if (ctx) {
             const osc = ctx.createOscillator();

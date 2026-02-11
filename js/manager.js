@@ -1,4 +1,4 @@
-import { getTableCount, setTableCount, getMenu, saveMenu, isMenuColorizeEnabled, setMenuColorizeEnabled } from 'data';
+import { getTableCount, setTableCount, getMenu, saveMenu } from 'data';
 import { saveImage, deleteImage, getImage } from 'db';
 import { t } from 'i18n';
 import { toast, confirm } from 'ux';
@@ -86,20 +86,6 @@ function render() {
                             </span>
                         </label>
                     </div>
-
-                    <div class="v-sep"></div>
-
-                    <div class="section-tools">
-                        <span class="section-label">${t('manager.colorize')}</span>
-                        <label class="fancy-switch compact-switch" aria-label="${t('manager.colorize')}">
-                            <input type="checkbox" id="tog-colorize">
-                            <span class="switch-track">
-                                <span class="switch-icon left">${t('settings.on')}</span>
-                                <span class="switch-icon right">${t('settings.off')}</span>
-                                <span class="switch-thumb"></span>
-                            </span>
-                        </label>
-                    </div>
                 </div>
                 <!-- Table Count -->
                 <div class="control-group grow">
@@ -107,7 +93,7 @@ function render() {
                         <label class="section-label">${t('manager.table_count')}</label>
                         <span class="slider-val-badge" id="disp-count">${currentCount}</span>
                     </div>
-                    <input type="range" id="inp-table-count" min="1" max="60" step="1" value="${currentCount}">
+                    <input type="range" id="inp-table-count" min="10" max="48" step="1" value="${currentCount}">
                 </div>
             </div>
 
@@ -135,7 +121,6 @@ function render() {
     const dispCount = container.querySelector('#disp-count');
     const togHand = container.querySelector('#tog-hand');
     const togSolo = container.querySelector('#tog-solo');
-    const togColorize = container.querySelector('#tog-colorize');
 
     // Solo Logic
     togSolo.checked = state.soloMode;
@@ -163,14 +148,6 @@ function render() {
         applyHanded(togHand.checked);
     };
 
-    if (togColorize) {
-        togColorize.checked = isMenuColorizeEnabled();
-        togColorize.onchange = () => {
-            setMenuColorizeEnabled(togColorize.checked);
-            window.dispatchEvent(new CustomEvent('menu-colorize-change'));
-        };
-    }
-    
     // Slider Logic
     inpSlider.oninput = () => {
         dispCount.textContent = inpSlider.value;
@@ -190,6 +167,15 @@ function render() {
     };
 }
 
+function countFavorites(items) {
+    let count = 0;
+    for (const item of items) {
+        if (item.isFavorite) count++;
+        if (item.children) count += countFavorites(item.children);
+    }
+    return count;
+}
+
 function renderTree(containerEl, items, depth = 0) {
     containerEl.innerHTML = '';
     
@@ -199,6 +185,7 @@ function renderTree(containerEl, items, depth = 0) {
         
         const hasChildren = item.children && item.children.length > 0;
         const depthStep = Math.min(depth, 8);
+        const isFav = !!item.isFavorite;
         
         // Use a content wrapper for easy flex management
         nodeEl.innerHTML = `
@@ -209,6 +196,7 @@ function renderTree(containerEl, items, depth = 0) {
                     </div>
                     <div class="node-thumb-mini hidden" data-action="img"></div>
                     <input type="text" class="node-input" value="${item.label}" placeholder="${t('manager.label_placeholder')}">
+                    ${isFav ? '<span style="color:var(--warning); margin-left:4px"><i class="fas fa-star"></i></span>' : ''}
                     <span class="node-warning hidden" data-action="warn">${t('manager.missing_label')}</span>
                 </div>
                 <div class="node-price-col">
@@ -289,9 +277,14 @@ function renderTree(containerEl, items, depth = 0) {
             const pop = document.createElement('div');
             pop.className = 'popover-menu';
             const addImageLabel = item.imageId ? t('manager.change_image') : t('manager.add_image');
+            const favIcon = item.isFavorite ? '<i class="fas fa-star" style="color:var(--warning)"></i>' : '<i class="far fa-star"></i>';
+            
             pop.innerHTML = `
                 <button class="menu-item" data-act="add">
                     <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg> ${t('manager.add_subitem')}
+                </button>
+                <button class="menu-item" data-act="fav">
+                    ${favIcon} ${t('manager.favorite')}
                 </button>
                 <button class="menu-item" data-act="img">
                      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg> ${addImageLabel}
@@ -326,6 +319,23 @@ function renderTree(containerEl, items, depth = 0) {
                     updateImage();
                     closePopover();
                 }
+            };
+
+            pop.querySelector('[data-act="fav"]').onclick = () => {
+                if (!item.isFavorite) {
+                    const total = countFavorites(getMenu());
+                    if (total >= 5) {
+                        toast(t('manager.max_favs'), 'error'); 
+                        closePopover();
+                        return;
+                    }
+                    item.isFavorite = true;
+                } else {
+                    item.isFavorite = false;
+                }
+                saveMenu(getMenu());
+                closePopover();
+                renderTree(containerEl, items, depth); // Re-render logic adjusted to keep context
             };
 
             pop.querySelector('[data-act="add"]').onclick = () => {

@@ -14,13 +14,28 @@ export const locales = {
             peers_connected: "{count} active",
             connected_short: "Online",
             waiting_short: "Idle",
+            conn_init: "Initializing...",
+            conn_hosting: "Waiting for peers",
+            conn_joining: "Looking for host",
             conn_offline_bi: "Offline",
             conn_waiting_bi: "Waiting",
             conn_peer_bi: "{count} peer",
             conn_peers_bi: "{count} peers",
             share_title: "Invite Staff",
-            lijevo: "L",
-            desno: "R"
+            sync_mode: "Data Sync",
+            sync_none: "None",
+            sync_slave: "Receive",
+            sync_host: "Send",
+            syncing: "Syncing...",
+            sync_wait: "Synchronizing data...",
+            sync_error: "Sync failed",
+            sync_timeout: "Sync timed out",
+            sync_start: "Starting sync: {count} images",
+            sync_img: "Image {index}/{total}",
+            sync_err_img: "Error saving image {id}",
+            sync_final: "Finalizing...",
+            sync_done: "Sync complete!",
+            sync_tooltip: "Choose how menu data is shared. 'Send' pushes your menu to others. 'Receive' updates your menu from the host."
         },
         roles: { waiter: "Waiter", bartender: "Bartender" },
         waiter: {
@@ -81,6 +96,8 @@ export const locales = {
             price_placeholder: "Price",
             label_placeholder: "Item Name",
             delete_item: "Delete Item",
+            favorite: "Favorite",
+            max_favs: "Max 5 favorites allowed",
             missing_label: "Name required"
         },
         welcome: {
@@ -91,8 +108,8 @@ export const locales = {
             step4: "Note: Works locally without internet."
         },
         footer: {
-            privacy: "100% Private & Open Source",
-            credit: "Created by Matija Radeljak",
+            privacy: "",
+            credit: "Aning Film d.o.o.",
             privpolicy: "Privacy policy"
         },
         help: {
@@ -115,13 +132,28 @@ export const locales = {
             peers_connected: "{count} na vezi",
             connected_short: "Spojen",
             waiting_short: "Tražim",
+            conn_init: "Pokretanje...",
+            conn_hosting: "Čekam uređaje",
+            conn_joining: "Tražim hosta",
             conn_offline_bi: "Nema veze",
             conn_waiting_bi: "Povezivanje",
             conn_peer_bi: "{count} uređaj",
             conn_peers_bi: "{count} uređaja",
             share_title: "Dodaj uređaj",
-            lijevo: "L",
-            desno: "D"
+            sync_mode: "Sinkronizacija",
+            sync_none: "Ne",
+            sync_slave: "Primaj",
+            sync_host: "Šalji",
+            syncing: "Sinkronizacija...",
+            sync_wait: "Sinkroniziram podatke...",
+            sync_error: "Greška u prijenosu",
+            sync_timeout: "Prijenos je istekao",
+            sync_start: "Početak: {count} slika",
+            sync_img: "Slika {index}/{total}",
+            sync_err_img: "Greška slike {id}",
+            sync_final: "Završavanje...",
+            sync_done: "Gotovo!",
+            sync_tooltip: "Odaberite smjer dijeljenja. 'Šalji' dijeli vaš cjenik. 'Primaj' preuzima cjenik od hosta."
         },
         roles: { waiter: "Konobar", bartender: "Šank" },
         waiter: {
@@ -182,6 +214,8 @@ export const locales = {
             price_placeholder: "Cijena",
             label_placeholder: "Naziv",
             delete_item: "Obriši stavku",
+            favorite: "Favorit",
+            max_favs: "Maksimalno 5 favorita",
             missing_label: "Nedostaje naziv"
         },
         welcome: {
@@ -192,7 +226,7 @@ export const locales = {
             step4: "Aplikacija radi i bez interneta (lokalno)."
         },
         footer: {
-            privacy: "Privatno i otvorenog koda",
+            privacy: "",
             credit: "Aning Film d.o.o.",
             privpolicy: "Politika privatnosti"
         },

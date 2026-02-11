@@ -30,9 +30,9 @@ function openDB() {
     return dbPromise;
 }
 
-export async function saveImage(blob) {
+export async function saveImage(blob, forceId = null) {
     const db = await openDB();
-    const id = crypto.randomUUID();
+    const id = forceId || crypto.randomUUID();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_IMAGES, 'readwrite');
         const store = tx.objectStore(STORE_IMAGES);

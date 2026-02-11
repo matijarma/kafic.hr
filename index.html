@@ -11,8 +11,8 @@
     <link rel="stylesheet" href="/css/fontawesome/css/all.min.css">
     <script>
         // Bump this string to bust caches across all assets and the service worker.
-        window.__APP_VERSION__ = Math.round(Math.random()*1000000)
-        window.__APP_VERSION__ = "8226-" + '1.2.1';
+        //window.__APP_VERSION__ = Math.round(Math.random()*1000000)
+        window.__APP_VERSION__ = "11226-" + '1.2.1';
         window.__ASSET_SUFFIX__ = `?v=${window.__APP_VERSION__}`;
         document.documentElement.dataset.version = window.__APP_VERSION__;
     </script>
@@ -181,6 +181,28 @@
                             <button id="btn-paste" aria-label="Paste">📋</button>
                         </div>
                     </div>
+                    
+                    <div class="sync-control-group mt-4">
+                        <div class="sync-label-row">
+                            <i class="fas fa-exchange-alt"></i>
+                            <span data-i18n="setup.sync_mode">Sync Mode</span>
+                            <button class="info-tooltip-btn" data-help="sync" aria-label="Help">
+                                <i class="far fa-question-circle"></i>
+                            </button>
+                        </div>
+                        <div class="tri-toggle-wrapper">
+                            <div class="tri-toggle" id="sync-toggle-join">
+                                <button data-val="nosync" data-i18n="setup.sync_none">None</button>
+                                <button data-val="slave" data-i18n="setup.sync_slave">Receive</button>
+                                <button data-val="host" data-i18n="setup.sync_host">Send</button>
+                                <div class="tri-toggle-glider"></div>
+                            </div>
+                            <div class="sync-status hidden" id="sync-status-join">
+                                <i class="fas fa-sync fa-spin"></i> <span data-i18n="setup.syncing">Syncing...</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <button id="btn-confirm-join" class="btn-primary full-width large mt-4" data-i18n="actions.connect" disabled>Connect</button>
                 </div>
             </div>
@@ -191,6 +213,28 @@
                     <div class="qr-box">
                         <canvas id="qr-canvas"></canvas>
                     </div>
+
+                    <div class="sync-control-group compact mb-3">
+                        <div class="sync-label-row">
+                            <i class="fas fa-exchange-alt"></i>
+                            <span data-i18n="setup.sync_mode">Sync Mode</span>
+                            <button class="info-tooltip-btn" data-help="sync" aria-label="Help">
+                                <i class="far fa-question-circle"></i>
+                            </button>
+                        </div>
+                        <div class="tri-toggle-wrapper">
+                            <div class="tri-toggle" id="sync-toggle-lobby">
+                                <button data-val="nosync" data-i18n="setup.sync_none">None</button>
+                                <button data-val="slave" data-i18n="setup.sync_slave">Receive</button>
+                                <button data-val="host" data-i18n="setup.sync_host">Send</button>
+                                <div class="tri-toggle-glider"></div>
+                            </div>
+                             <div class="sync-status hidden" id="sync-status-lobby">
+                                <i class="fas fa-sync fa-spin"></i> <span data-i18n="setup.syncing">Syncing...</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="session-info">
                         <div class="session-code-row">
                             <div class="session-code" id="display-code">------</div>
@@ -298,6 +342,7 @@
                 <div class="sheet-header">
                     <div class="sheet-title">
                         <h3 id="qty-item-title">Item</h3>
+                        <button id="qty-item-image-btn" class="icon-btn small hidden"><i class="fas fa-image"></i></button>
                         <div id="qty-item-path" class="pill ghost small hidden"></div>
                     </div>
                     <button id="btn-close-qty" class="icon-btn"> <i class="fas fa-arrow-left"></i></button>
@@ -320,18 +365,27 @@
                         </div>
                     </div>
                 </div>
+                <div id="qty-image-preview" class="qty-image-preview hidden">
+                    <img id="qty-image-preview-img" alt="">
+                </div>
              </div>
         </dialog>
 
         <!-- VIEW 3: BARTENDER -->
         <section id="view-bartender" class="view">
             <header class="app-header">
-                <button id="bartender-back-btn" class="icon-btn" aria-label="Back">X</button>
-                <div class="header-titles">
-                    <span class="main" data-i18n="bartender.incoming">Incoming Orders</span>
+                <div class="header-left">
+                    <button id="bartender-back-btn" class="icon-btn" aria-label="Back">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span class="header-title-text" style="font-weight:700; font-size:1.1rem" data-i18n="bartender.incoming">Incoming Orders</span>
                 </div>
-                <div class="header-actions">
-                    <!-- Status pill or extra actions can go here -->
+                <div class="header-right">
+                    <button id="header-conn-bartender" class="header-conn-indicator" aria-label="Connection Status">
+                        <span class="dot"></span>
+                        <span class="count"></span>
+                    </button>
+                    <button id="btn-toggle-theme-bartender" class="icon-btn small" aria-label="Toggle Theme">◐</button>
                 </div>
             </header>
 
@@ -394,24 +448,31 @@
 
     <footer class="app-footer" id="app-footer" aria-label="App footer">
         <div class="footer-text">
-            <span data-i18n="footer.privacy">100% private and open source</span>
+        </div>
+        <div class="footer-links">
+            <a class="footer-link" href="https://aningfilm.hr" target="_blank" rel="noopener noreferrer" aria-label="AningFilm">
+                <span data-i18n="footer.credit">AF</span>&nbsp; 2026
+            </a>
             <span class="dot">•</span>
-            <span data-i18n="footer.credit">Developed by Matija Radeljak</span>
+            <a class="footer-link" href="https://github.com/matijarma/kafic.hr" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                <i class="fab fa-github"></i>
+            </a>
+            <span id="version-pill" class="footer-version">v0.2.0</span>
             <span class="dot">•</span>
             <button id="btn-privacy-policy" class="footer-policy-link" type="button">
                 <span data-i18n="footer.privpolicy">Privacy policy</span>
             </button>
         </div>
-        <div class="footer-links">
-            <a class="footer-link" href="https://aningfilm.hr" target="_blank" rel="noopener noreferrer" aria-label="AningFilm">
-                <img src="/images/aningfilm.png" alt="AningFilm logo">
-            </a>
-            <a class="footer-link" href="https://github.com/matijarma/kafic.hr" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
-                <i class="fab fa-github"></i>
-            </a>
-            <span id="version-pill" class="footer-version">v0.2.0</span>
-        </div>
     </footer>
+
+    <!-- Sync Loading Overlay -->
+    <div id="sync-loading" class="overlay hidden">
+        <div class="loading-column">
+            <div class="spinner"></div>
+            <p id="sync-loading-text" style="color:white; font-weight:700; margin-top:20px; font-size:1.1rem">Synchronizing data...</p>
+            <div id="sync-log" style="color:rgba(255,255,255,0.7); font-family:monospace; font-size:0.85rem; margin-top:12px; max-height:150px; overflow-y:auto; width:100%; max-width:300px; text-align:left;"></div>
+        </div>
+    </div>
 
     <script type="module">
         import 'app';
