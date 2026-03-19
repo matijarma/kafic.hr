@@ -246,39 +246,7 @@ const observeOrderList = () => {
 };
 
 const applyOrderLayout = (count) => {
-    if (!orderListContainer) return;
-    if (count <= 0) {
-        orderListContainer.style.gridTemplateColumns = '';
-        orderListContainer.style.gridAutoRows = '';
-        return;
-    }
-    const rect = orderListContainer.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-
-    const style = getComputedStyle(orderListContainer);
-    const rowGap = parseFloat(style.rowGap) || parseFloat(style.gap) || 0;
-    const colGap = parseFloat(style.columnGap) || parseFloat(style.gap) || 0;
-    const paddingX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
-    const paddingY = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
-    const availableWidth = rect.width - paddingX;
-    const availableHeight = rect.height - paddingY;
-
-    let best = { cols: 1, rows: count, score: 0, cellHeight: 0 };
-    for (let cols = 1; cols <= count; cols++) {
-        const rows = Math.ceil(count / cols);
-        const usableW = availableWidth - colGap * (cols - 1);
-        const usableH = availableHeight - rowGap * (rows - 1);
-        if (usableW <= 0 || usableH <= 0) continue;
-        const cellW = usableW / cols;
-        const cellH = usableH / rows;
-        const score = Math.min(cellW, cellH);
-        if (score > best.score || (score === best.score && rows < best.rows)) {
-            best = { cols, rows, score, cellHeight: cellH };
-        }
-    }
-
-    orderListContainer.style.gridTemplateColumns = `repeat(${best.cols}, minmax(0, 1fr))`;
-    orderListContainer.style.gridAutoRows = `${Math.floor(best.cellHeight)}px`;
+    // Layout is now handled entirely by CSS
 };
 
 const bindClearHold = () => {
@@ -507,7 +475,41 @@ const renderMenu = (items) => {
                     <span class="grid-item-label">${item.label}</span>
                 </div>
             `;
-            el.onclick = () => openQty(item);
+            
+            let pressTimer = null;
+            let startX = 0;
+            let startY = 0;
+            let longPressTriggered = false;
+
+            el.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                longPressTriggered = false;
+                pressTimer = setTimeout(() => {
+                    longPressTriggered = true;
+                    if (navigator.vibrate) navigator.vibrate(20);
+                    openQty(item);
+                }, 400);
+            }, { passive: true });
+
+            el.addEventListener('touchmove', (e) => {
+                const dx = Math.abs(e.touches[0].clientX - startX);
+                const dy = Math.abs(e.touches[0].clientY - startY);
+                if (dx > 10 || dy > 10) {
+                    if (pressTimer) clearTimeout(pressTimer);
+                }
+            }, { passive: true });
+
+            const cancelTouch = () => { if (pressTimer) clearTimeout(pressTimer); };
+            el.addEventListener('touchend', cancelTouch);
+            el.addEventListener('touchcancel', cancelTouch);
+            el.addEventListener('contextmenu', e => { e.preventDefault(); cancelTouch(); });
+            
+            el.onclick = (e) => {
+                if (!longPressTriggered) {
+                    quickAdd(item);
+                }
+            };
 
             applyColorizedTileBackground(el, item, topLevelColorMap);
         }
@@ -583,6 +585,37 @@ const confirmQty = (qty) => {
     closeQtyModal();
     const addedMsg = t('alerts.item_added', { qty: finalQty, item: itemLabel });
     toast(addedMsg !== 'alerts.item_added' ? addedMsg : `${finalQty}x ${itemLabel} added`, 'success');
+    renderOrderDock();
+};
+
+const quickAdd = (item) => {
+    const context = state.currentPath.map(p => p.label).join(' ');
+    const topMap = buildTopLevelColorMap();
+    const key = resolveTopLevelKey(item);
+    const color = topMap.get(key) || null;
+    
+    // Check if last item matches exactly
+    if (state.currentOrder.length > 0) {
+        const lastItem = state.currentOrder[state.currentOrder.length - 1];
+        if (lastItem.id === item.id && lastItem.context === context) {
+            if (lastItem.qty < 99) {
+                lastItem.qty += 1;
+                renderOrderDock();
+                if (navigator.vibrate) navigator.vibrate(10);
+            }
+            return;
+        }
+    }
+    
+    state.currentOrder.push({
+        id: item.id,
+        label: item.label,
+        qty: 1,
+        context,
+        color
+    });
+    
+    if (navigator.vibrate) navigator.vibrate(10);
     renderOrderDock();
 };
 

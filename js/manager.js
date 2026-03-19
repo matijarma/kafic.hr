@@ -48,14 +48,6 @@ function render() {
 
     container.innerHTML = `
         <div class="manager-container">
-            <header class="manager-header">
-                <button class="icon-btn" id="mgr-back" aria-label="Back">
-                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                </button>
-                <h2 class="header-title">${t('manager.title')}</h2>
-                <div style="width:40px"></div>
-            </header>
-
             <div class="config-card compact-row" id="settingtoggles">
                 <div>
                     <!-- Solo Mode Toggle -->
@@ -113,10 +105,6 @@ function render() {
     `;
 
     // Bindings
-    container.querySelector('#mgr-back').onclick = () => {
-        window.dispatchEvent(new CustomEvent('nav-back'));
-    };
-
     const inpSlider = container.querySelector('#inp-table-count');
     const dispCount = container.querySelector('#disp-count');
     const togHand = container.querySelector('#tog-hand');

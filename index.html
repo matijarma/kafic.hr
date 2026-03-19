@@ -12,7 +12,7 @@
     <script>
         // Bump this string to bust caches across all assets and the service worker.
         //window.__APP_VERSION__ = Math.round(Math.random()*1000000)
-        window.__APP_VERSION__ = "11226-" + '1.2.1';
+        window.__APP_VERSION__ = "2326-" + '1.2.2';
         window.__ASSET_SUFFIX__ = `?v=${window.__APP_VERSION__}`;
         document.documentElement.dataset.version = window.__APP_VERSION__;
     </script>
@@ -90,27 +90,52 @@
 
     <!-- APP CONTAINER -->
     <main id="app-root">
-        
+    <!-- GLOBAL HEADER -->
+    <header id="main-header" class="app-header">
+        <div class="header-left">
+            <a href="/" id="logo-home" class="view-setup-only" aria-label="Close session"><img src="/images/kafichr-logo-circle-alpha-256.png" style="width: 3vh; max-width: 30px; border-radius:50%;"></a>
+            <input type="text" id="header-username" class="editable-label view-setup-only" placeholder="Your Name" aria-label="Username" data-i18n="setup.label_name">
+            
+            <button id="waiter-exit-btn" class="icon-btn view-waiter-only" aria-label="Exit"><i class="fas fa-times"></i></button>
+            <div class="header-titles view-waiter-only">
+                <div class="breadcrumbs" id="waiter-breadcrumbs">Tables</div>
+            </div>
+
+            <button id="bartender-back-btn" class="icon-btn view-bartender-only" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
+            <span class="header-title-text view-bartender-only" style="font-weight:700; font-size:1.1rem" data-i18n="bartender.incoming">Incoming Orders</span>
+
+            <button id="manager-back-btn" class="icon-btn view-manager-only" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
+            <span class="header-title-text view-manager-only" style="font-weight:700; font-size:1.1rem" data-i18n="settings.title">Settings</span>
+        </div>
+        <div class="header-right">
+            <div class="net-indicator view-waiter-only" id="waiter-net-pill" aria-live="polite">
+                <span class="dot"></span>
+                <span class="label"></span>
+            </div>
+
+            <button id="header-conn" class="header-conn-indicator view-setup-only view-bartender-only view-manager-only" aria-label="Connection Status">
+                <span class="dot"></span>
+                <span class="count"></span>
+            </button>
+            
+            <div id="header-tools-drawer" class="header-tools-drawer collapsed">
+                <button id="btn-open-help" class="icon-btn small view-setup-only" aria-label="Open guide" title="Open guide">
+                    <i class="fas fa-info"></i>
+                </button>
+                <button id="btn-toggle-theme" class="icon-btn small not-waiter" aria-label="Toggle Theme">◐</button>
+                <button id="btn-toggle-lang" class="icon-btn small view-setup-only" aria-label="Toggle Language"></button>
+            </div>
+            <button id="btn-toggle-tools" class="icon-btn small header-tools-toggle" aria-label="More options">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
+    </header>
+
+    <div id="views-container">
         <!-- VIEW 1: SETUP (Home, Join, Lobby) -->
         <section id="view-setup" class="view active">
             <!-- Global Top Bar for Setup -->
-            <header class="app-header">
-                <div class="header-left">
-                    <button id="logo-home" class="" aria-label="Close session"><a href="/"><img src="/images/kafichr-logo-circle-alpha-256.png" style="width: 3vh;"></a></button>
-                    <input type="text" id="header-username" class="editable-label" placeholder="Your Name" aria-label="Username" data-i18n="setup.label_name">
-                </div>
-                <div class="header-right">
-                    <button id="header-conn" class="header-conn-indicator" aria-label="Connection Status">
-                        <span class="dot"></span>
-                        <span class="count"></span>
-                    </button>
-                    <button id="btn-open-help" class="icon-btn small" aria-label="Open guide" title="Open guide">
-                        <i class="fas fa-info"></i>
-                    </button>
-                    <button id="btn-toggle-theme" class="icon-btn small" aria-label="Toggle Theme">◐</button>
-                    <button id="btn-toggle-lang" class="icon-btn small" aria-label="Toggle Language"></button>
-                </div>
-            </header>
+            
 
             <!-- Slide 1: Welcome (Redesigned) -->
             <div id="setup-home" class="setup-slide active">
@@ -267,30 +292,18 @@
 
         <!-- VIEW 2: WAITER -->
         <section id="view-waiter" class="view">
-            <header class="app-header">
-                <button id="waiter-exit-btn" class="icon-btn" aria-label="Exit">X</button>
-                <div class="header-titles">
-                    <div class="breadcrumbs" id="waiter-breadcrumbs">Tables</div>
-                </div>
-                <div class="header-actions">
-                    <div class="net-indicator" id="waiter-net-pill" aria-live="polite">
-                        <span class="dot"></span>
-                        <span class="label"></span>
-                    </div>
-                </div>
-            </header>
+            
 
             <div id="waiter-grid" class="grid-layout">
                 <!-- Dynamic Items -->
             </div>
 
-            <button id="waiter-back-btn" class="waiter-back-fab hidden" aria-label="Back">
-                <i class="fas fa-arrow-left"></i>
-                <span class="label" data-i18n="actions.back">Back</span>
-            </button>
-
             <!-- Bottom Drawer for Order -->
             <div id="order-dock" class="order-dock">
+                <button id="waiter-back-btn" class="waiter-back-fab hidden" aria-label="Back">
+                    <i class="fas fa-arrow-left"></i>
+                    <span class="label" data-i18n="actions.back">Back</span>
+                </button>
                 <div class="dock-handle"></div>
                 <div class="dock-summary">
                     <div class="dock-title">
@@ -373,21 +386,7 @@
 
         <!-- VIEW 3: BARTENDER -->
         <section id="view-bartender" class="view">
-            <header class="app-header">
-                <div class="header-left">
-                    <button id="bartender-back-btn" class="icon-btn" aria-label="Back">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <span class="header-title-text" style="font-weight:700; font-size:1.1rem" data-i18n="bartender.incoming">Incoming Orders</span>
-                </div>
-                <div class="header-right">
-                    <button id="header-conn-bartender" class="header-conn-indicator" aria-label="Connection Status">
-                        <span class="dot"></span>
-                        <span class="count"></span>
-                    </button>
-                    <button id="btn-toggle-theme-bartender" class="icon-btn small" aria-label="Toggle Theme">◐</button>
-                </div>
-            </header>
+            
 
             <div id="bartender-feed" class="feed-layout">
                 <div class="empty-state">
@@ -401,6 +400,8 @@
         <section id="view-manager" class="view">
             <!-- Content injected by manager.js -->
         </section>
+
+    </div>
 
     </main>
 

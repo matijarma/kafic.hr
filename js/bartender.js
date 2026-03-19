@@ -107,7 +107,8 @@ const addOrderToCard = (card, data) => {
         </div>
     `;
 
-    orderEl.querySelector('[data-action="done"]').onclick = () => {
+    const completeOrder = () => {
+        orderEl.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
         orderEl.style.opacity = '0';
         orderEl.style.transform = 'scale(0.98)';
         setTimeout(() => {
@@ -121,8 +122,50 @@ const addOrderToCard = (card, data) => {
                 tableCards.delete(card.tableId);
                 checkEmpty();
             }
-        }, 160);
+        }, 200);
     };
+
+    orderEl.querySelector('[data-action="done"]').onclick = completeOrder;
+
+    // Swipe-to-complete
+    let startX = 0;
+    let currentX = 0;
+    let isSwiping = false;
+
+    orderEl.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        isSwiping = true;
+        orderEl.style.transition = 'none';
+    }, { passive: true });
+
+    orderEl.addEventListener('touchmove', (e) => {
+        if (!isSwiping) return;
+        currentX = e.touches[0].clientX - startX;
+        if (currentX > 0) {
+            orderEl.style.transform = `translateX(${currentX}px)`;
+            orderEl.style.opacity = Math.max(0.3, 1 - (currentX / 250));
+        }
+    }, { passive: true });
+
+    const handleSwipeEnd = () => {
+        if (!isSwiping) return;
+        isSwiping = false;
+        orderEl.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+        if (currentX > 100) {
+            // Swipe successful
+            orderEl.style.transform = 'translateX(100%)';
+            orderEl.style.opacity = '0';
+            setTimeout(completeOrder, 200);
+        } else {
+            // Reset
+            orderEl.style.transform = 'translateX(0)';
+            orderEl.style.opacity = '1';
+        }
+        currentX = 0;
+    };
+
+    orderEl.addEventListener('touchend', handleSwipeEnd);
+    orderEl.addEventListener('touchcancel', handleSwipeEnd);
 
     card.ordersEl.prepend(orderEl);
     updateTableCount(card);

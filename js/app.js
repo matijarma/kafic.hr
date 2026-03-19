@@ -34,6 +34,8 @@ const btnToggleLang = document.getElementById('btn-toggle-lang');
 const btnResetApp = document.getElementById('btn-reset-app');
 const btnOpenHelp = document.getElementById('btn-open-help');
 const logoHome = document.getElementById('logo-home');
+const headerToolsDrawer = document.getElementById('header-tools-drawer');
+const btnToggleTools = document.getElementById('btn-toggle-tools');
 
 // Setup Action Buttons
 const btnHost = document.getElementById('btn-host');
@@ -61,6 +63,7 @@ const roleBtns = document.querySelectorAll('.role-card[data-role]');
 // Role Back Buttons
 const waiterExitBtn = document.getElementById('waiter-exit-btn');
 const bartenderBackBtn = document.getElementById('bartender-back-btn');
+const managerBackBtn = document.getElementById('manager-back-btn');
 
 // Scanner
 const scanOverlay = document.getElementById('scan-overlay');
@@ -762,8 +765,34 @@ function setupEvents() {
 
     document.querySelectorAll('.nav-back-btn').forEach(b => b.onclick = () => handleBackPress('ui'));
 
+    let headerToolsTimeout = null;
+    const closeHeaderTools = () => {
+        if (headerToolsDrawer) headerToolsDrawer.classList.add('collapsed');
+        if (btnToggleTools) btnToggleTools.classList.remove('open');
+    };
+    const openHeaderTools = () => {
+        if (headerToolsDrawer) headerToolsDrawer.classList.remove('collapsed');
+        if (btnToggleTools) btnToggleTools.classList.add('open');
+        resetHeaderToolsTimeout();
+    };
+    const resetHeaderToolsTimeout = () => {
+        if (headerToolsTimeout) clearTimeout(headerToolsTimeout);
+        headerToolsTimeout = setTimeout(closeHeaderTools, 4000);
+    };
+
+    if (btnToggleTools) {
+        btnToggleTools.onclick = () => {
+            if (headerToolsDrawer.classList.contains('collapsed')) {
+                openHeaderTools();
+            } else {
+                closeHeaderTools();
+            }
+        };
+    }
+
     if (btnOpenHelp) {
         btnOpenHelp.onclick = () => {
+            closeHeaderTools();
             openHelpModal();
         };
     }
@@ -869,7 +898,8 @@ function setupEvents() {
     
     // Role Back Hooks
     if (waiterExitBtn) waiterExitBtn.onclick = () => returnToLobby();
-    bartenderBackBtn.onclick = () => returnToLobby();
+    if (bartenderBackBtn) bartenderBackBtn.onclick = () => returnToLobby();
+    if (managerBackBtn) managerBackBtn.onclick = () => returnToLobby();
     // Expose global return for waiter navigation
     window.returnToLobby = returnToLobby;
 
@@ -1372,7 +1402,13 @@ function checkArrows() {
 window.addEventListener('nav-view', () => checkArrows()); // Custom event if needed, or check in goToView
 
 // --- THEME & LANG CYCLE ---
+const triggerThemeTransition = () => {
+    document.body.classList.add('theme-transition');
+    setTimeout(() => document.body.classList.remove('theme-transition'), 300);
+};
+
 function cycleTheme() {
+    triggerThemeTransition();
     const current = localStorage.getItem('barlink_theme') || 'auto';
     const next = current === 'auto' ? 'light' : (current === 'light' ? 'dark' : 'auto');
     applyTheme(next);
@@ -1394,6 +1430,7 @@ function applyTheme(theme) {
 }
 
 function cycleLang() {
+    triggerThemeTransition();
     const current = getLanguage();
     const next = current === 'en' ? 'hr' : 'en';
     setLanguage(next);

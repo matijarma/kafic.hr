@@ -55,12 +55,15 @@ export const toast = (msg, type = 'info') => {
     el.innerHTML = `<span>${msg}</span>`;
     con.appendChild(el);
     
+    // Dynamic duration: minimum 2.5s, plus time to read characters
+    const duration = Math.min(Math.max(2500, msg.length * 60), 6000);
+    
     // Animate
     requestAnimationFrame(() => el.classList.add('show'));
     setTimeout(() => {
         el.classList.remove('show');
-        setTimeout(() => el.remove(), 200);
-    }, 1100);
+        setTimeout(() => el.remove(), 250);
+    }, duration);
 };
 
 export const confirm = (message, title = null) => {
