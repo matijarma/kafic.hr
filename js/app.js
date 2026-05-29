@@ -1,8 +1,10 @@
 import { initNetwork, broadcast, selfId } from 'network';
 import { state, resetWaiterState } from 'state';
 import { generateJoinCode, roomIdFromCode, saveSession, loadSession, clearSavedSession, syncStateToSession } from 'session';
-import { initWaiter, refreshWaiter, onOrderCompleted, canNavigateBack as canWaiterNavigateBack, navigateBack as navigateWaiterBack } from 'waiter';
-import { initBartender, onOrderReceived, setOrderCompletionHandler } from 'bartender';
+import { initWaiter, refreshWaiter, onOrderCompleted, onOrderAck, rehydrateUncleared, canNavigateBack as canWaiterNavigateBack, navigateBack as navigateWaiterBack } from 'waiter';
+import { initBartender, onOrderReceived, setOrderCompletionHandler, rehydrateBarOrders } from 'bartender';
+import { retryAll } from 'orders';
+import { clearScoped } from 'storage';
 import { initManager } from 'manager';
 import { renderQR } from 'qr';
 import { initI18n, t, setLanguage, getLanguage, updateDOM } from 'i18n';
@@ -865,6 +867,7 @@ function setupEvents() {
     if (leaveLobbyBtn) {
         leaveLobbyBtn.onclick = async () => {
             if (await confirmModal(t('confirm.leave_session'))) {
+                clearScoped(state.sessionCode);
                 clearSavedSession();
                 window.location.reload();
             }
@@ -1049,6 +1052,9 @@ async function resumeFlow(session) {
     state.peers = {};
     state.barOrders = [];
     resetWaiterState();
+    // Restore persisted runtime state for this session (waiter table indicators;
+    // the bartender feed is rebuilt in launchRole via rehydrateBarOrders).
+    try { rehydrateUncleared(); } catch (e) {}
     hasNetwork = false;
     setJoinStatus('');
     // setLobbyStatus(t('setup.resuming'), 'info');
@@ -1100,6 +1106,8 @@ function initSessionState(code, isHost) {
     headerUsername.value = safeName;
     syncUsernameWidth();
     syncStateToSession(session);
+    // Fresh session => start with a clean slate for this code's scoped runtime keys.
+    clearScoped(code);
     persist();
 }
 
@@ -1128,7 +1136,11 @@ function launchRole(role) {
         else refreshWaiter();
     } else {
         goToView('bartender');
-        if (!bartenderStarted) { initBartender(); bartenderStarted = true; }
+        if (!bartenderStarted) {
+            initBartender();
+            bartenderStarted = true;
+            rehydrateBarOrders(); // restore persisted received orders on first launch / resume
+        }
     }
 }
 
@@ -1153,28 +1165,15 @@ function connectNetwork(restoredSession = null) {
     
     try {
         const sessionData = restoredSession || loadSession();
-        initNetwork(state.roomId, (data, peerId) => {
-            if (!data || typeof data !== 'object') return;
-            if (data.type === 'hello') {
-                state.peers[peerId] = { name: data.name, role: data.role };
-                updatePeerUI();
-            }
-            if (data.type === 'new-order') {
-                if (!state.soloMode && data.senderId && data.senderId === selfId) {
-                    return;
-                }
-                onOrderReceived(data);
-            }
-            if (data.type === 'order-completed') {
-                onOrderCompleted(data);
-            }
-            if (['sync-start', 'sync-image', 'sync-menu'].includes(data.type)) {
-                handleSyncData(data);
-            }
-        }, (status) => {
+        initNetwork(state.roomId, routeMessage, (status) => {
             if (status.type === 'leave' && status.peerId) delete state.peers[status.peerId];
             if (status.type === 'connected' || status.type === 'peers' || status.type === 'join' || status.type === 'leave') {
                 updatePeerUI();
+            }
+            // Resend any still-pending outbound orders whenever connectivity changes.
+            // retryAll() is debounced, so the join+network-update+connected burst sends once.
+            if (status.type === 'join' || status.type === 'network-update' || status.type === 'connected') {
+                retryAll(broadcast);
             }
             if (status.type === 'join') {
                 announceSelf(status.peerId);
@@ -1198,6 +1197,32 @@ function connectNetwork(restoredSession = null) {
     }
     
     setTimeout(() => announceSelf(), 500);
+}
+
+function routeMessage(data, peerId) {
+    if (!data || typeof data !== 'object') return;
+    switch (data.type) {
+        case 'hello':
+            state.peers[peerId] = { name: data.name, role: data.role };
+            updatePeerUI();
+            break;
+        case 'new-order':
+            // Outside solo mode, ignore our own echoed order.
+            if (!state.soloMode && data.senderId && data.senderId === selfId) return;
+            onOrderReceived(data);
+            break;
+        case 'order-ack':
+            onOrderAck(data);
+            break;
+        case 'order-completed':
+            onOrderCompleted(data);
+            break;
+        case 'sync-start':
+        case 'sync-image':
+        case 'sync-menu':
+            handleSyncData(data);
+            break;
+    }
 }
 
 function announceSelf(targetId) {

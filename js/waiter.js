@@ -1,10 +1,12 @@
 import { getMenu, getTables } from 'data';
 import { getImage } from 'db';
 import { state, resetWaiterState } from 'state';
-import { broadcast, selfId } from 'network';
+import { broadcast, selfId, getPeerCount } from 'network';
 import { onOrderReceived } from 'bartender';
 import { t } from 'i18n';
 import { toast, registerModal, popModal, confirm, icon } from 'ux';
+import { enqueueOrder, markAcked, getPending, pruneAcked, setStatusListener } from 'orders';
+import { readSet, writeSet, scopedKey } from 'storage';
 
 // DOM Elements
 const grid = document.getElementById('waiter-grid');
@@ -19,6 +21,7 @@ const orderCountBadge = document.getElementById('order-count-badge');
 const sendBtn = document.getElementById('btn-send-order');
 const clearBtn = document.getElementById('btn-clear-order');
 const navTablesBtn = document.getElementById('btn-nav-tables');
+const pendingStrip = document.getElementById('pending-strip');
 
 // Qty Modal
 const qtyModal = document.getElementById('qty-modal');
@@ -213,6 +216,53 @@ export const initWaiter = () => {
     observeGrid();
     observeOrderList();
     bindClearHold();
+
+    // Outbound order delivery status (Phase 2)
+    setStatusListener(renderPendingStrip);
+    pruneAcked();
+    renderPendingStrip();
+};
+
+// --- Outbound order delivery (pending/acked strip + uncleared-table persistence) ---
+const unclearedKey = () => scopedKey('kafic_uncleared', state.sessionCode);
+const persistUncleared = () => writeSet(unclearedKey(), state.unclearedTables);
+
+export const rehydrateUncleared = () => {
+    state.unclearedTables = readSet(unclearedKey());
+};
+
+const renderPendingStrip = () => {
+    if (!pendingStrip) return;
+    const entries = getPending();
+    if (!entries.length) {
+        pendingStrip.classList.add('hidden');
+        pendingStrip.innerHTML = '';
+        return;
+    }
+    pendingStrip.classList.remove('hidden');
+    pendingStrip.innerHTML = entries.map(e => {
+        const acked = e.status === 'acked';
+        const label = t('bartender.table_label', { table: e.order.tableId });
+        const statusText = acked ? t('alerts.order_sent') : t('alerts.order_pending_label');
+        const statusIcon = acked ? icon('check-circle') : icon('sync', 'spin');
+        return `<div class="pending-row ${acked ? 'acked' : 'pending'}">
+            <span class="pending-table">${label}</span>
+            <span class="pending-status">${statusIcon} ${statusText}</span>
+        </div>`;
+    }).join('');
+};
+
+// Called from app.js routing when a bartender acknowledges an order.
+export const onOrderAck = (data) => {
+    if (!data || !data.orderId) return;
+    const wasPending = getPending().some(e => e.order.orderId === data.orderId && e.status === 'pending');
+    markAcked(data.orderId);
+    if (wasPending) {
+        toast(t('alerts.order_sent'), 'success');
+        // Clear the "delivered ✓" row shortly after, keeping the strip tidy.
+        setTimeout(() => { pruneAcked(3000); renderPendingStrip(); }, 3200);
+    }
+    renderPendingStrip();
 };
 
 const scheduleGridLayout = (count) => {
@@ -761,41 +811,54 @@ const clearOrder = async () => {
     }
 };
 
+const newOrderId = () =>
+    (crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${selfId}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
 const sendOrder = () => {
     if (!state.currentTable || state.currentOrder.length === 0) return;
-    
+
     const itemsToSend = state.currentOrder.map(item => ({
         ...item,
         payment: selectedPaymentMethod
     }));
 
-    // We allow sending even if offline/no peers (local echo)
     const payload = {
         type: 'new-order',
+        orderId: newOrderId(),
         tableId: state.currentTable.id,
         items: itemsToSend,
         timestamp: Date.now(),
         senderId: selfId
     };
-    
-    // 1. Try to send to peers
-    const sent = broadcast(payload);
-    
-    // 2. Local echo only in solo mode.
-    // Outside solo mode, this device should not receive its own orders.
+
+    // 1. Persist to the pending queue FIRST (survives reload), then broadcast.
+    enqueueOrder(payload);
+    broadcast(payload);
+
+    // 2. Feedback depends on whether anyone can receive it.
     if (state.soloMode) {
+        // This device is also the bar — deliver locally and confirm immediately.
         onOrderReceived(payload);
+        markAcked(payload.orderId);
+        toast(t('alerts.order_sent'), 'success');
+        // No network ack will arrive to itself, so tidy the "delivered" row here.
+        setTimeout(() => { pruneAcked(3000); renderPendingStrip(); }, 3200);
+    } else if (getPeerCount() === 0) {
+        toast(t('alerts.order_queued_offline'), 'info'); // will auto-retry on reconnect
+    } else {
+        toast(t('alerts.order_sending'), 'info');         // ack will flip it to delivered
     }
-    
-    // 3. Feedback
+
+    // 3. Mark table as having pending orders (persisted) and reset the builder.
     state.unclearedTables.add(state.currentTable.id);
-    toast(t('alerts.order_sent'), 'success');
-    
-    // Reset
+    persistUncleared();
     selectedPaymentMethod = null;
     updatePaymentDisplay();
     resetWaiterState();
     render();
+    renderPendingStrip();
 };
 
 const handleTables = () => {
@@ -808,6 +871,7 @@ const handleTables = () => {
 export const onOrderCompleted = (data) => {
     if (data && data.tableId) {
         state.unclearedTables.delete(data.tableId);
+        persistUncleared();
         if (!state.currentTable) {
             renderTables();
         }

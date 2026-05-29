@@ -57,10 +57,12 @@ export const locales = {
             save: "Save", connect: "Connect", copy_link: "Copy Link",
             send: "Send Order", clear: "Clear All", mark_done: "Complete",
             add: "Add", install: "Install App", remove: "Remove",
-            cancel: "Cancel", confirm: "Confirm", back: "Back"
+            cancel: "Cancel", confirm: "Confirm", back: "Back", undo: "Undo"
         },
         alerts: {
-            order_sent: "Order Sent", network_error: "Connection Lost",
+            order_sent: "Delivered", network_error: "Connection Lost",
+            order_sending: "Sending…", order_queued_offline: "Saved — waiting for bar",
+            order_pending_label: "delivering…", order_done_undo: "Order completed",
             paste_failed: "Could not paste", scan_unsupported: "Camera not supported",
             scan_success: "Code scanned",
             join_invalid: "Invalid code format",
@@ -175,10 +177,12 @@ export const locales = {
             save: "Spremi", connect: "Spoji se", copy_link: "Kopiraj",
             send: "Pošalji", clear: "Poništi", mark_done: "Gotovo",
             add: "Dodaj", install: "Instaliraj", remove: "Ukloni",
-            cancel: "Odustani", confirm: "Potvrdi", back: "Natrag"
+            cancel: "Odustani", confirm: "Potvrdi", back: "Natrag", undo: "Poništi"
         },
         alerts: {
-            order_sent: "Poslano na šank", network_error: "Veza prekinuta",
+            order_sent: "Isporučeno", network_error: "Veza prekinuta",
+            order_sending: "Šaljem…", order_queued_offline: "Spremljeno — čeka šank",
+            order_pending_label: "dostavljam…", order_done_undo: "Narudžba gotova",
             paste_failed: "Greška u međuspremniku", scan_unsupported: "Kamera nije dostupna",
             scan_success: "Kod učitan",
             join_invalid: "Neispravan kod",

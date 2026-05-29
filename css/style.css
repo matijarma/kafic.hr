@@ -1693,6 +1693,46 @@ input[type=range]::-webkit-slider-runnable-track {
 .toast.success { background: rgba(47, 181, 115, 0.14); color: #1f8a55; border-color: rgba(47, 181, 115, 0.3); }
 .toast.info { background: rgba(34, 139, 189, 0.12); color: var(--text-primary); border-color: rgba(34, 139, 189, 0.28); }
 
+/* Toast with an action button (e.g. Undo) */
+.toast-with-action { display: inline-flex; align-items: center; gap: var(--space-3); }
+.toast-action-btn {
+    flex-shrink: 0;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-surface-1);
+    color: var(--accent-strong);
+    font-weight: 800;
+    font-size: 0.85rem;
+    padding: 4px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+.toast-action-btn:hover { background: var(--accent-soft); }
+
+/* Waiter outbound order delivery strip */
+.pending-strip {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-bottom: var(--space-2);
+}
+.pending-strip.hidden { display: none; }
+.pending-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    font-weight: 700;
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border-soft);
+}
+.pending-row .pending-status { display: inline-flex; align-items: center; gap: 6px; }
+.pending-row.pending .pending-status { color: var(--text-muted); }
+.pending-row.acked { background: rgba(47, 181, 115, 0.12); border-color: rgba(47, 181, 115, 0.3); }
+.pending-row.acked .pending-status { color: var(--success); }
+
 /* --- FOOTER --- */
 .app-footer {
     position: fixed;

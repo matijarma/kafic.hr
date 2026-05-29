@@ -71,6 +71,37 @@ export const toast = (msg, type = 'info') => {
     }, duration);
 };
 
+// Like toast(), but with an action button (e.g. Undo). Returns a dismiss() fn.
+export const toastAction = (msg, actionLabel, onAction, opts = {}) => {
+    const { type = 'info', duration = 5000 } = opts;
+    const con = document.getElementById('toast-container');
+    if (!con) return () => {};
+    const el = document.createElement('div');
+    el.className = `toast ${type} toast-with-action`;
+    const text = document.createElement('span');
+    text.textContent = msg;
+    const btn = document.createElement('button');
+    btn.className = 'toast-action-btn';
+    btn.textContent = actionLabel;
+    el.appendChild(text);
+    el.appendChild(btn);
+    con.appendChild(el);
+
+    let done = false;
+    const dismiss = () => {
+        if (done) return;
+        done = true;
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 250);
+    };
+    btn.onclick = () => {
+        try { onAction && onAction(); } finally { dismiss(); }
+    };
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(dismiss, duration);
+    return dismiss;
+};
+
 export const confirm = (message, title = null) => {
     return new Promise((resolve) => {
         const resolvedTitle = title || t('confirm.title');

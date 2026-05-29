@@ -1,10 +1,26 @@
 import { t } from 'i18n';
-import { toast, icon } from 'ux';
+import { toast, toastAction, icon } from 'ux';
 import { state } from 'state';
+import { broadcast, selfId } from 'network';
+import { readJSON, writeJSON, readSet, writeSet, scopedKey } from 'storage';
 
 const feed = document.getElementById('bartender-feed');
 const tableCards = new Map();
 let onComplete = () => {};
+
+// --- Persistence + dedup (host-local) ---
+const barOrdersKey = () => scopedKey('kafic_bar_orders', state.sessionCode);
+const seenKey = () => scopedKey('kafic_seen_orderids', state.sessionCode);
+const persistBarOrders = () => writeJSON(barOrdersKey(), state.barOrders);
+const removeBarOrder = (orderId) => {
+    const i = state.barOrders.findIndex(o => o && o.orderId === orderId);
+    if (i >= 0) { state.barOrders.splice(i, 1); persistBarOrders(); }
+};
+
+// --- Deferred completion (undo window) ---
+const FINALIZE_DELAY_MS = 5000;
+const orderRegistry = new Map();      // orderId -> { orderEl, card, data }
+const pendingCompletions = new Map(); // orderId -> finalize timer
 
 // Sound
 let ctx = null;
@@ -22,7 +38,38 @@ export const setOrderCompletionHandler = (fn) => {
     onComplete = fn;
 };
 
-export const onOrderReceived = (data) => {
+export const onOrderReceived = (data, opts = {}) => {
+    const silent = opts.silent === true; // silent = rehydration replay (no ack/notify/persist)
+
+    // Ensure every order has an id (older payloads / solo edge cases).
+    if (!data.orderId) {
+        data.orderId = 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    }
+
+    if (!silent) {
+        // Only the bar (bartender role, or solo device) handles incoming orders.
+        // In a mesh, a new-order also reaches other waiters — they must ignore it.
+        const isBar = state.role === 'bartender' || state.soloMode;
+        if (!isBar) return;
+
+        // Acknowledge receipt so the waiter's pending order flips to "delivered".
+        // Re-ack duplicates too (cheap, helps a retrying waiter), but don't re-render them.
+        broadcast({
+            type: 'order-ack', orderId: data.orderId,
+            byId: selfId, byName: state.workerName, at: Date.now()
+        });
+
+        // Dedup against the persisted seen-set (survives reload; blocks resurrection
+        // of an already-completed order if a waiter retries late).
+        const seen = readSet(seenKey());
+        if (seen.has(data.orderId)) return;
+        seen.add(data.orderId);
+        writeSet(seenKey(), seen);
+
+        state.barOrders.push(data);
+        persistBarOrders();
+    }
+
     let card = tableCards.get(data.tableId);
     if (!card) {
         card = createTableCard(data.tableId);
@@ -36,7 +83,27 @@ export const onOrderReceived = (data) => {
     if (empty) empty.remove();
 
     feed.prepend(card.el);
-    notify(data);
+    if (!silent) notify(data);
+};
+
+// Rebuild the feed from persisted orders after a reload/resume.
+export const rehydrateBarOrders = () => {
+    tableCards.forEach(c => c.el.remove());
+    tableCards.clear();
+    orderRegistry.clear();
+    pendingCompletions.forEach(timer => clearTimeout(timer));
+    pendingCompletions.clear();
+    feed.innerHTML = '';
+
+    let stored = readJSON(barOrdersKey(), []);
+    if (!Array.isArray(stored)) stored = [];
+    // Drop anything older than 12h to avoid stale carry-over.
+    const cutoff = Date.now() - 12 * 3600 * 1000;
+    state.barOrders = stored.filter(o => o && (o.timestamp || 0) >= cutoff);
+    persistBarOrders();
+
+    state.barOrders.forEach(o => onOrderReceived(o, { silent: true }));
+    checkEmpty();
 };
 
 const createTableCard = (tableId) => {
@@ -94,6 +161,7 @@ const addOrderToCard = (card, data) => {
 
     const orderEl = document.createElement('div');
     orderEl.className = 'feed-order';
+    orderEl.dataset.orderId = data.orderId;
     orderEl.innerHTML = `
         <div class="feed-order-header">
             <div class="feed-meta">
@@ -107,25 +175,8 @@ const addOrderToCard = (card, data) => {
         </div>
     `;
 
-    const completeOrder = () => {
-        orderEl.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
-        orderEl.style.opacity = '0';
-        orderEl.style.transform = 'scale(0.98)';
-        setTimeout(() => {
-            orderEl.remove();
-            updateTableCount(card);
-            if (card.ordersEl.children.length === 0) {
-                // Table is fully cleared
-                onComplete(card.tableId);
-                
-                card.el.remove();
-                tableCards.delete(card.tableId);
-                checkEmpty();
-            }
-        }, 200);
-    };
-
-    orderEl.querySelector('[data-action="done"]').onclick = completeOrder;
+    orderRegistry.set(data.orderId, { orderEl, card, data });
+    orderEl.querySelector('[data-action="done"]').onclick = () => beginCompletion(data.orderId);
 
     // Swipe-to-complete
     let startX = 0;
@@ -152,10 +203,7 @@ const addOrderToCard = (card, data) => {
         isSwiping = false;
         orderEl.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
         if (currentX > 100) {
-            // Swipe successful
-            orderEl.style.transform = 'translateX(100%)';
-            orderEl.style.opacity = '0';
-            setTimeout(completeOrder, 200);
+            beginCompletion(data.orderId); // routes through the same undo window
         } else {
             // Reset
             orderEl.style.transform = 'translateX(0)';
@@ -171,10 +219,90 @@ const addOrderToCard = (card, data) => {
     updateTableCount(card);
 };
 
+// Orders not mid-completion (used for counts + card visibility).
+const visibleOrderCount = (card) =>
+    [...card.ordersEl.children].filter(c => !c.classList.contains('completing')).length;
+
 const updateTableCount = (card) => {
     if (!card?.countEl) return;
-    const count = card.ordersEl.children.length;
-    card.countEl.textContent = count;
+    card.countEl.textContent = visibleOrderCount(card);
+};
+
+const refreshCardVisual = (card) => {
+    updateTableCount(card);
+    // Hide the card while all its orders are mid-completion; restored on undo.
+    card.el.style.display = visibleOrderCount(card) === 0 ? 'none' : '';
+};
+
+// Start the undo window: collapse the order visually, defer the real completion.
+const beginCompletion = (orderId) => {
+    const reg = orderRegistry.get(orderId);
+    if (!reg || pendingCompletions.has(orderId)) return;
+    const { orderEl, card } = reg;
+
+    orderEl.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+    orderEl.style.opacity = '0';
+    orderEl.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+        orderEl.classList.add('completing');
+        orderEl.style.display = 'none';
+        refreshCardVisual(card);
+    }, 200);
+
+    const timer = setTimeout(() => finalizeCompletion(orderId), FINALIZE_DELAY_MS);
+    pendingCompletions.set(orderId, timer);
+
+    toastAction(
+        t('alerts.order_done_undo'),
+        t('actions.undo'),
+        () => undoCompletion(orderId),
+        { type: 'info', duration: FINALIZE_DELAY_MS }
+    );
+};
+
+const undoCompletion = (orderId) => {
+    const timer = pendingCompletions.get(orderId);
+    if (timer) clearTimeout(timer);
+    pendingCompletions.delete(orderId);
+
+    const reg = orderRegistry.get(orderId);
+    if (!reg) return;
+    const { orderEl, card } = reg;
+
+    orderEl.classList.remove('completing');
+    orderEl.style.display = '';
+    orderEl.style.opacity = '1';
+    orderEl.style.transform = 'translateX(0)';
+
+    // Card may have been hidden (or the empty-state shown) — bring it back.
+    card.el.style.display = '';
+    if (!feed.contains(card.el)) {
+        const empty = feed.querySelector('.empty-state');
+        if (empty) empty.remove();
+        feed.prepend(card.el);
+    }
+    refreshCardVisual(card);
+};
+
+// Undo window elapsed: permanently remove the order; if the table is now empty,
+// broadcast the table completion to peers (deferred until here — never premature).
+const finalizeCompletion = (orderId) => {
+    pendingCompletions.delete(orderId);
+    const reg = orderRegistry.get(orderId);
+    if (!reg) return;
+    const { orderEl, card } = reg;
+
+    orderEl.remove();
+    orderRegistry.delete(orderId);
+    removeBarOrder(orderId);
+    updateTableCount(card);
+
+    if (visibleOrderCount(card) === 0 && tableCards.has(card.tableId)) {
+        onComplete(card.tableId); // broadcasts 'order-completed'
+        card.el.remove();
+        tableCards.delete(card.tableId);
+        checkEmpty();
+    }
 };
 
 const checkEmpty = () => {
