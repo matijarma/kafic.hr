@@ -22,6 +22,7 @@ const ASSETS = [
   `/js/storage.js${SUFFIX}`,
   `/js/orders-core.js${SUFFIX}`,
   `/js/orders.js${SUFFIX}`,
+  `/js/reports.js${SUFFIX}`,
   `/js/manager.js${SUFFIX}`,
   `/js/db.js${SUFFIX}`,
   `/js/trystero.min.js${SUFFIX}`,

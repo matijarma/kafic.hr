@@ -3,6 +3,8 @@ import { toast, toastAction, icon } from 'ux';
 import { state } from 'state';
 import { broadcast, selfId } from 'network';
 import { readJSON, writeJSON, readSet, writeSet, scopedKey } from 'storage';
+import { saveOrder } from 'db';
+import { getMenu, ensureShiftStart } from 'data';
 
 const feed = document.getElementById('bartender-feed');
 const tableCards = new Map();
@@ -15,6 +17,48 @@ const persistBarOrders = () => writeJSON(barOrdersKey(), state.barOrders);
 const removeBarOrder = (orderId) => {
     const i = state.barOrders.findIndex(o => o && o.orderId === orderId);
     if (i >= 0) { state.barOrders.splice(i, 1); persistBarOrders(); }
+};
+
+// Build an id -> price lookup from the host's own menu (waiters never send price).
+const buildPriceMap = () => {
+    const map = {};
+    const walk = (nodes) => (nodes || []).forEach(n => {
+        if (n.children) walk(n.children);
+        else if (n.id != null) map[n.id] = n.price;
+    });
+    walk(getMenu());
+    return map;
+};
+
+// Persist a received order to the host-local log (IndexedDB), snapshotting prices
+// at capture time so later menu edits don't rewrite past shift revenue.
+const persistOrder = async (data) => {
+    try {
+        ensureShiftStart();
+        const prices = buildPriceMap();
+        const items = (data.items || []).map(it => {
+            const qty = it.qty || 0;
+            const unitPrice = typeof prices[it.id] === 'number' ? prices[it.id] : 0;
+            return { id: it.id, label: it.label, qty, unitPrice, lineTotal: Math.round(unitPrice * qty * 100) / 100 };
+        });
+        const orderTotal = Math.round(items.reduce((s, i) => s + i.lineTotal, 0) * 100) / 100;
+        const waiterName = (state.peers[data.senderId] && state.peers[data.senderId].name)
+            || (state.soloMode ? state.workerName : '') || '';
+        await saveOrder({
+            orderId: data.orderId,
+            timestamp: data.timestamp || Date.now(),
+            completedAt: null,
+            tableId: data.tableId,
+            tableLabel: t('bartender.table_label', { table: data.tableId }),
+            waiterName,
+            senderId: data.senderId || '',
+            payment: (data.items && data.items[0] && data.items[0].payment) || 'unknown',
+            items,
+            orderTotal
+        });
+    } catch (e) {
+        console.warn('[reports] persistOrder failed', e); // never block order display
+    }
 };
 
 // --- Deferred completion (undo window) ---
@@ -68,6 +112,7 @@ export const onOrderReceived = (data, opts = {}) => {
 
         state.barOrders.push(data);
         persistBarOrders();
+        persistOrder(data); // host-local order log (fire-and-forget)
     }
 
     let card = tableCards.get(data.tableId);

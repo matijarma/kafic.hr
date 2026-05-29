@@ -1,8 +1,9 @@
-import { getTableCount, setTableCount, getMenu, saveMenu } from 'data';
-import { saveImage, deleteImage, getImage } from 'db';
-import { t } from 'i18n';
+import { getTableCount, setTableCount, getMenu, saveMenu, getShiftStart, startNewShift } from 'data';
+import { saveImage, deleteImage, getImage, getOrdersSince, clearOrders, countOrders } from 'db';
+import { t, getLanguage } from 'i18n';
 import { toast, confirm, icon } from 'ux';
 import { state } from 'state';
+import { summary, salesByItem, byTable, byWaiter, toCsv } from 'reports';
 
 let container = null;
 let activePopover = null;
@@ -48,6 +49,8 @@ function render() {
 
     container.innerHTML = `
         <div class="manager-container">
+            <div class="config-card" id="reports-section"></div>
+
             <div class="config-card compact-row" id="settingtoggles">
                 <div>
                     <!-- Solo Mode Toggle -->
@@ -103,6 +106,9 @@ function render() {
             </div>
         </div>
     `;
+
+    // Async-fill the reports section (reads the IndexedDB order log).
+    renderReports();
 
     // Bindings
     const inpSlider = container.querySelector('#inp-table-count');
@@ -370,4 +376,139 @@ function renderTree(containerEl, items, depth = 0) {
             renderTree(childrenContainer, item.children, depth + 1);
         }
     });
+}
+
+// --- Reports (Phase 3, host-local) ---
+
+const PAY_ORDER = ['cash', 'card', 'virman', 'house', 'unknown'];
+
+const localeTag = () => (getLanguage() === 'hr' ? 'hr-HR' : 'en-US');
+const fmtMoney = (n) => {
+    try { return new Intl.NumberFormat(localeTag(), { style: 'currency', currency: 'EUR' }).format(n || 0); }
+    catch (e) { return (n || 0).toFixed(2); }
+};
+const fmtTime = (ts) => {
+    if (!ts) return '—';
+    try { return new Date(ts).toLocaleString(localeTag(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+    catch (e) { return ''; }
+};
+const escHtml = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+async function renderReports() {
+    const host = container && container.querySelector('#reports-section');
+    if (!host) return;
+
+    let orders = [];
+    let total = 0;
+    try {
+        orders = await getOrdersSince(getShiftStart());
+        total = await countOrders();
+    } catch (e) {
+        console.warn('[reports] load failed', e);
+    }
+
+    if (!orders.length) {
+        host.innerHTML = `
+            <div class="section-header"><label class="section-label">${t('reports.title')}</label></div>
+            <div class="empty-state"><div class="icon">✓</div><p>${t('reports.empty')}</p></div>
+            ${total > 0 ? `<div class="reports-actions"><button class="btn-ghost danger-text" id="btn-clear-log">${t('reports.clear_log')}</button></div>` : ''}
+        `;
+        bindReportButtons(host, []);
+        return;
+    }
+
+    const sum = summary(orders);
+    const sinceStr = fmtTime(getShiftStart());
+
+    const payRows = PAY_ORDER
+        .filter(k => sum.byPayment[k])
+        .map(k => {
+            const label = k === 'unknown' ? t('reports.payment_unknown') : t('payment.' + k);
+            const v = sum.byPayment[k];
+            return `<div class="pay-stat"><span>${escHtml(label)}</span><span>${v.orders} · ${fmtMoney(v.revenue)}</span></div>`;
+        }).join('');
+
+    const rows = (arr, cells) => arr.map(x => `<tr>${cells(x)}</tr>`).join('');
+    const itemRows = rows(salesByItem(orders), i => `<td>${escHtml(i.label)}</td><td class="num">${i.qty}</td><td class="num">${fmtMoney(i.revenue)}</td>`);
+    const tableRows = rows(byTable(orders), tb => `<td>${escHtml(tb.label)}</td><td class="num">${tb.orders}</td><td class="num">${fmtMoney(tb.revenue)}</td>`);
+    const waiterRows = rows(byWaiter(orders), w => `<td>${escHtml(w.name || t('reports.unknown_waiter'))}</td><td class="num">${w.orders}</td><td class="num">${fmtMoney(w.revenue)}</td>`);
+
+    host.innerHTML = `
+        <div class="section-header">
+            <label class="section-label">${t('reports.title')}</label>
+            <span class="reports-since">${t('reports.shift_since')} ${escHtml(sinceStr)}</span>
+        </div>
+        <div class="reports-kpis">
+            <div class="kpi"><span class="kpi-val">${sum.orderCount}</span><span class="kpi-label">${t('reports.orders')}</span></div>
+            <div class="kpi"><span class="kpi-val">${sum.itemCount}</span><span class="kpi-label">${t('reports.items')}</span></div>
+            <div class="kpi accent"><span class="kpi-val">${fmtMoney(sum.revenue)}</span><span class="kpi-label">${t('reports.revenue')}</span></div>
+        </div>
+        <div class="reports-payments">
+            <div class="mini-label">${t('reports.payment_breakdown')}</div>
+            ${payRows}
+        </div>
+        <details class="reports-details">
+            <summary>${t('reports.by_item')}</summary>
+            <table class="reports-table"><tbody>${itemRows}</tbody></table>
+        </details>
+        <details class="reports-details">
+            <summary>${t('reports.by_table')}</summary>
+            <table class="reports-table"><tbody>${tableRows}</tbody></table>
+        </details>
+        <details class="reports-details">
+            <summary>${t('reports.by_waiter')}</summary>
+            <table class="reports-table"><tbody>${waiterRows}</tbody></table>
+        </details>
+        <div class="reports-actions">
+            <button class="btn-ghost" id="btn-export-csv">${t('reports.export_csv')}</button>
+            <button class="btn-ghost" id="btn-close-shift">${t('reports.close_shift')}</button>
+            <button class="btn-ghost danger-text" id="btn-clear-log">${t('reports.clear_log')}</button>
+        </div>
+    `;
+    bindReportButtons(host, orders);
+}
+
+function bindReportButtons(host, orders) {
+    const exportBtn = host.querySelector('#btn-export-csv');
+    if (exportBtn) exportBtn.onclick = () => exportCsv(orders);
+
+    const closeBtn = host.querySelector('#btn-close-shift');
+    if (closeBtn) closeBtn.onclick = () => {
+        startNewShift();
+        renderReports();
+        toast(t('reports.shift_closed'), 'success');
+    };
+
+    const clearBtn = host.querySelector('#btn-clear-log');
+    if (clearBtn) clearBtn.onclick = async () => {
+        if (await confirm(t('reports.clear_confirm'))) {
+            try { await clearOrders(); } catch (e) {}
+            renderReports();
+            toast(t('reports.log_cleared'), 'success');
+        }
+    };
+}
+
+function exportCsv(orders) {
+    const csv = toCsv(orders);
+    const stamp = new Date().toISOString().slice(0, 10);
+    try {
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `kafic-shift-${stamp}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast(t('reports.exported'), 'success');
+    } catch (e) {
+        // Locked-down PWA contexts: fall back to clipboard.
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(csv)
+                .then(() => toast(t('reports.copied'), 'success'))
+                .catch(() => {});
+        }
+    }
 }

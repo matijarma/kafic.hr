@@ -11,7 +11,7 @@
     <script>
         // Bump this string to bust caches across all assets and the service worker.
         //window.__APP_VERSION__ = Math.round(Math.random()*1000000)
-        window.__APP_VERSION__ = "2622-" + '1.4.0';
+        window.__APP_VERSION__ = "2622-" + '1.5.0';
         window.__ASSET_SUFFIX__ = `?v=${window.__APP_VERSION__}`;
         document.documentElement.dataset.version = window.__APP_VERSION__;
     </script>
@@ -68,6 +68,7 @@
                     storage: `./js/storage.js${suffix}`,
                     'orders-core': `./js/orders-core.js${suffix}`,
                     orders: `./js/orders.js${suffix}`,
+                    reports: `./js/reports.js${suffix}`,
                     trystero: `./js/trystero.min.js${suffix}`
                 }
             };

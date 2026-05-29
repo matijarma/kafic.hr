@@ -177,3 +177,19 @@ export const saveMenu = (newMenu) => {
 export const setMenuColorizeEnabled = (_enabled) => {
     menuColorize = true;
 };
+
+// --- Shift boundary (Phase 3) ---
+// A single timestamp marks "current shift" start. Reports query orders since it.
+const SHIFT_KEY = 'barlink_shift_start';
+export const getShiftStart = () => {
+    const v = parseInt(localStorage.getItem(SHIFT_KEY) || '', 10);
+    return Number.isFinite(v) ? v : 0;
+};
+export const startNewShift = () => {
+    const now = Date.now();
+    localStorage.setItem(SHIFT_KEY, String(now));
+    return now;
+};
+export const ensureShiftStart = () => {
+    if (!getShiftStart()) startNewShift();
+};

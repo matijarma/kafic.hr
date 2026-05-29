@@ -9,7 +9,7 @@ import { initManager } from 'manager';
 import { renderQR } from 'qr';
 import { initI18n, t, setLanguage, getLanguage, updateDOM } from 'i18n';
 import { initUX, toast, confirm as confirmModal, registerModal, popModal, icon } from 'ux';
-import { getMenu, saveMenu } from 'data';
+import { getMenu, saveMenu, ensureShiftStart } from 'data';
 import { getImage, saveImage } from 'db';
 
 // Elements
@@ -1015,6 +1015,7 @@ async function startHost() {
     resetWaiterState();
     state.barOrders = [];
     setJoinStatus('');
+    ensureShiftStart(); // begin a shift for the host-local order log
     const code = generateJoinCode();
     initSessionState(code, true);
     await setupLobbyUI();

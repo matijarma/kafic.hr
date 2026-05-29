@@ -53,6 +53,17 @@ export const locales = {
             house: "On House"
         },
         bartender: { incoming: "Queue", all_done: "No pending orders", table_label: "Tbl {table}" },
+        reports: {
+            title: "Shift Report",
+            empty: "No orders yet this shift",
+            orders: "Orders", items: "Items", revenue: "Revenue",
+            payment_breakdown: "By payment",
+            by_item: "By item", by_table: "By table", by_waiter: "By waiter",
+            export_csv: "Export CSV", copied: "Copied to clipboard", exported: "CSV downloaded",
+            close_shift: "Close shift", shift_closed: "New shift started", shift_since: "Since",
+            clear_log: "Clear log", clear_confirm: "Permanently delete the entire order log?", log_cleared: "Order log cleared",
+            unknown_waiter: "Unknown", payment_unknown: "Unspecified"
+        },
         actions: {
             save: "Save", connect: "Connect", copy_link: "Copy Link",
             send: "Send Order", clear: "Clear All", mark_done: "Complete",
@@ -173,6 +184,17 @@ export const locales = {
             house: "Kuća"
         },
         bartender: { incoming: "Nove narudžbe", all_done: "Sve isporučeno", table_label: "Stol {table}" },
+        reports: {
+            title: "Izvještaj smjene",
+            empty: "Još nema narudžbi u ovoj smjeni",
+            orders: "Narudžbe", items: "Stavke", revenue: "Promet",
+            payment_breakdown: "Po plaćanju",
+            by_item: "Po stavci", by_table: "Po stolu", by_waiter: "Po konobaru",
+            export_csv: "Izvoz CSV", copied: "Kopirano u međuspremnik", exported: "CSV preuzet",
+            close_shift: "Zatvori smjenu", shift_closed: "Nova smjena započeta", shift_since: "Od",
+            clear_log: "Obriši zapise", clear_confirm: "Trajno obrisati cijeli zapisnik narudžbi?", log_cleared: "Zapisnik obrisan",
+            unknown_waiter: "Nepoznato", payment_unknown: "Nedefinirano"
+        },
         actions: {
             save: "Spremi", connect: "Spoji se", copy_link: "Kopiraj",
             send: "Pošalji", clear: "Poništi", mark_done: "Gotovo",

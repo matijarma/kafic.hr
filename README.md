@@ -16,6 +16,8 @@ Kafić.hr is a modern, serverless Progressive Web App (PWA) designed to synchron
 *   **📱 PWA Ready:** Install it on your phone or tablet for a native app feel.
 *   **🌍 Multilingual:** Support for Croatian and English out of the box.
 *   **🌓 Dark Mode:** Easy on the eyes for those late-night shifts.
+*   **🛡️ Reliable Delivery:** Orders are queued and auto-retried until the bar acknowledges them — nothing silently lost. Bartender gets an undo window on completed orders.
+*   **📊 Shift Reports:** The bar device keeps a local order log and generates a shift report (revenue, payment breakdown, sales by item/table/waiter) with CSV export.
 
 ---
 
@@ -57,7 +59,7 @@ Kafić.hr is unique because it **doesn't use a central server** to store or pass
 
 *   **Language:** Pure Vanilla JavaScript (ES Modules).
 *   **Networking:** [Trystero](https://github.com/dmotz/trystero) for WebRTC abstraction.
-*   **Storage:** `localStorage` for state & `IndexedDB` for menu images.
+*   **Storage:** `localStorage` for state, the outbound order queue, and runtime state; `IndexedDB` for menu images and the host-local order log.
 *   **Icons:** Inline SVG sprite (no external icon font).
 *   **Manifest:** Full PWA support with `sw.js` for asset caching.
 
