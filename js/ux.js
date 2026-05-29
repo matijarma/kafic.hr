@@ -4,6 +4,11 @@ import { t } from 'i18n';
 const modals = [];
 let ignoreNextPopstate = false;
 
+// Inline SVG icon helper — references the #icon-sprite <symbol>s in index.html.
+// Replaces Font Awesome. Sizing follows the element's font-size (icons are 1em).
+export const icon = (name, cls = '') =>
+    `<svg class="ic${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#ic-${name}"></use></svg>`;
+
 export const initUX = (backCallback) => {
     window.addEventListener('popstate', (e) => {
         if (ignoreNextPopstate) {

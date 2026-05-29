@@ -38,6 +38,19 @@
     --header-height: 56px;
     --app-height: min(100svh, 100dvh);
     --order-dock-height: clamp(190px, calc(var(--app-height) * 0.28), 280px);
+
+    /* Spacing scale (use on new/edited rules) */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+
+    /* Gradient tokens */
+    --grad-accent: linear-gradient(140deg, var(--accent), #f57442);
+    --grad-danger: linear-gradient(135deg, var(--danger), #f06666);
 }
 
 [data-theme="dark"] {
@@ -183,7 +196,7 @@ button:focus-visible, input:focus-visible {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: linear-gradient(140deg, var(--accent), #f57442);
+    background: var(--grad-accent);
     color: #fff;
     padding: 12px 14px;
     border-radius: var(--radius-sm);
@@ -195,7 +208,7 @@ button:focus-visible, input:focus-visible {
 .btn-primary:hover { transform: translateY(-1px); box-shadow: var(--shadow-elevated); }
 .btn-primary:active { transform: translateY(0); box-shadow: var(--shadow-sharp); }
 .btn-primary:disabled { opacity: 0.55; box-shadow: none; cursor: default; transform: none; }
-.btn-primary.danger { background: linear-gradient(135deg, #e14b4b, #f06666); border-color: #e14b4b; }
+.btn-primary.danger { background: var(--grad-danger); border-color: var(--danger); }
 
 .btn-primary.large, .btn-secondary.large { padding: 11px 14px; font-size: 0.98rem; border-radius: var(--radius-md); }
 
@@ -654,6 +667,35 @@ body:not([data-view="waiter"]) .not-waiter { display: inline-flex !important; }
     overflow: hidden;
     text-overflow: ellipsis;
 }
+/* Inline SVG icon system (replaces Font Awesome) */
+.ic {
+    width: 1em;
+    height: 1em;
+    display: inline-block;
+    vertical-align: -0.125em;
+    fill: currentColor;
+    flex-shrink: 0;
+}
+.ic.spin { animation: spin 1s linear infinite; }
+.node-fav-star { color: var(--warning); margin-left: 4px; }
+.fav-on { color: var(--warning); }
+
+/* Extracted from former inline styles */
+.home-logo-img { width: 3vh; max-width: 30px; border-radius: 50%; }
+.header-title-text { font-weight: 700; font-size: 1.1rem; }
+.sync-loading-text { color: #fff; font-weight: 700; margin-top: 20px; font-size: 1.1rem; }
+.sync-log {
+    color: rgba(255, 255, 255, 0.7);
+    font-family: monospace;
+    font-size: 0.85rem;
+    margin-top: 12px;
+    max-height: 150px;
+    overflow-y: auto;
+    width: 100%;
+    max-width: 300px;
+    text-align: left;
+}
+
 .tile-icon {
     font-size: 0.9rem;
     opacity: 0.78;
@@ -1974,7 +2016,6 @@ video { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
     .qr-box { margin: 0 auto; }
     .session-info { align-items: center; }
     .session-code-row { justify-content: center; }
-    .hero { text-align: left; }
     .app-header { border-radius: var(--radius-md); }
 }
 
@@ -1997,9 +2038,6 @@ video { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
         align-content: start;
         gap: 12px;
     }
-    #setup-home.setup-slide.active .hero { grid-area: hero; }
-    #setup-home.setup-slide.active .welcome-note { grid-area: welcome; }
-    #setup-home.setup-slide.active .action-dock { grid-area: actions; align-content: start; }
     #setup-home.setup-slide.active #resume-dock { grid-area: resume; align-self: start; }
 
     #setup-lobby.setup-slide.active {
@@ -2134,26 +2172,6 @@ video { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
         height: auto;
     }
 
-    #setup-home .hero {
-        grid-column: 1 / -1;
-        text-align: center;
-        align-items: center;
-        margin-bottom: 20px;
-        padding-bottom: 20px;
-        border-bottom: 1px solid var(--border-soft);
-    }
-    #setup-home .hero img { width: 80px !important; height: 80px !important; }
-    #setup-home .hero h1 { font-size: 2.5rem; }
-    
-    #setup-home .welcome-note { grid-column: 1; height: 100%; }
-    #setup-home .action-dock {
-        grid-column: 2;
-        gap: 16px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }    
     #setup-lobby.setup-slide.active {
         grid-template-columns: 300px 1fr;
         align-items: stretch;
@@ -2425,7 +2443,7 @@ video { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
     color: var(--text-secondary);
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.04);
 }
-.action-card.primary .icon-circle, .action-card.primary .icon-circle i:before {
+.action-card.primary .icon-circle {
     background: var(--accent-strong);
     color: white !important;
     box-shadow: 0 4px 12px rgba(242, 92, 47, 0.3);
@@ -2512,9 +2530,6 @@ video { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
     .action-card .icon-circle { width: 64px; height: 64px; font-size: 1.8rem; border-radius: 20px; }
     .card-text { align-items: center; }
 }
-
-/* Hide Old Elements */
-.hero, .hero h1, .hero p, .meta-row, .welcome-note, .action-dock, .big-btn, .corner-trash { display: none !important; }
 
 /* --- HEADER CONNECTION INDICATOR --- */
 .header-conn-indicator {
@@ -2665,3 +2680,14 @@ video { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
     animation: spin 1s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Respect users who prefer reduced motion: neutralize keyframe animations
+   (popIn, pulseBorder, pulseGreen, pulseDot, bounceArrow, spin) and transitions. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}

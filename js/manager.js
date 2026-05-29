@@ -1,7 +1,7 @@
 import { getTableCount, setTableCount, getMenu, saveMenu } from 'data';
 import { saveImage, deleteImage, getImage } from 'db';
 import { t } from 'i18n';
-import { toast, confirm } from 'ux';
+import { toast, confirm, icon } from 'ux';
 import { state } from 'state';
 
 let container = null;
@@ -57,8 +57,8 @@ function render() {
                         <label class="fancy-switch" aria-label="Solo Mode">
                             <input type="checkbox" id="tog-solo">
                             <span class="switch-track">
-                                <span class="switch-icon left" data-i18n="settings.on"><i class="fas fa-check-circle"></i></span>
-                                <span class="switch-icon right"><i class="fas fa-power-off"></i></span>
+                                <span class="switch-icon left" data-i18n="settings.on">${icon('check-circle')}</span>
+                                <span class="switch-icon right">${icon('power-off')}</span>
                                 <span class="switch-thumb"></span>
                             </span>
                         </label>
@@ -184,7 +184,7 @@ function renderTree(containerEl, items, depth = 0) {
                     </div>
                     <div class="node-thumb-mini hidden" data-action="img"></div>
                     <input type="text" class="node-input" value="${item.label}" placeholder="${t('manager.label_placeholder')}">
-                    ${isFav ? '<span style="color:var(--warning); margin-left:4px"><i class="fas fa-star"></i></span>' : ''}
+                    ${isFav ? `<span class="node-fav-star">${icon('star')}</span>` : ''}
                     <span class="node-warning hidden" data-action="warn">${t('manager.missing_label')}</span>
                 </div>
                 <div class="node-price-col">
@@ -265,7 +265,7 @@ function renderTree(containerEl, items, depth = 0) {
             const pop = document.createElement('div');
             pop.className = 'popover-menu';
             const addImageLabel = item.imageId ? t('manager.change_image') : t('manager.add_image');
-            const favIcon = item.isFavorite ? '<i class="fas fa-star" style="color:var(--warning)"></i>' : '<i class="far fa-star"></i>';
+            const favIcon = item.isFavorite ? icon('star', 'fav-on') : icon('star-o');
             
             pop.innerHTML = `
                 <button class="menu-item" data-act="add">

@@ -4,7 +4,7 @@ import { state, resetWaiterState } from 'state';
 import { broadcast, selfId } from 'network';
 import { onOrderReceived } from 'bartender';
 import { t } from 'i18n';
-import { toast, registerModal, popModal, confirm } from 'ux';
+import { toast, registerModal, popModal, confirm, icon } from 'ux';
 
 // DOM Elements
 const grid = document.getElementById('waiter-grid');
@@ -451,14 +451,14 @@ const renderMenu = (items) => {
         const el = document.createElement('button');
         el.className = 'grid-item';
         const isFav = favIds.has(item.id);
-        const starHtml = isFav ? '<div class="fav-star"><i class="fas fa-star"></i></div>' : '';
+        const starHtml = isFav ? `<div class="fav-star">${icon('star')}</div>` : '';
         
         if (item.children && item.children.length > 0) {
             el.style.borderTop = `4px solid ${item.color || '#999'}`;
             el.innerHTML = `
                 ${starHtml}
                 <div class="grid-item-content">
-                    <i class="fas fa-cubes tile-icon" aria-hidden="true"></i>
+                    ${icon('cubes', 'tile-icon')}
                     <span class="grid-item-label">${item.label}</span>
                 </div>
             `;
@@ -471,7 +471,7 @@ const renderMenu = (items) => {
             el.innerHTML = `
                 ${starHtml}
                 <div class="grid-item-content">
-                    <i class="fas fa-wine-glass-alt" aria-hidden="true"></i>
+                    ${icon('wine-glass-alt')}
                     <span class="grid-item-label">${item.label}</span>
                 </div>
             `;

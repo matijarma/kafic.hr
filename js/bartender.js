@@ -1,5 +1,5 @@
 import { t } from 'i18n';
-import { toast } from 'ux';
+import { toast, icon } from 'ux';
 import { state } from 'state';
 
 const feed = document.getElementById('bartender-feed');
@@ -70,7 +70,7 @@ const addOrderToCard = (card, data) => {
     const payment = data.items[0]?.payment;
     const iconMap = { cash: 'money-bill-alt', card: 'credit-card', virman: 'file-invoice', house: 'gift' };
     const payIcon = payment 
-        ? `<span class="order-payment-icon"><i class="fas fa-${iconMap[payment]}" title="${payment}"></i></span>` 
+        ? `<span class="order-payment-icon">${icon(iconMap[payment])}</span>`
         : '';
 
     const itemsHtml = data.items.map(item => {

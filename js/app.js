@@ -6,7 +6,7 @@ import { initBartender, onOrderReceived, setOrderCompletionHandler } from 'barte
 import { initManager } from 'manager';
 import { renderQR } from 'qr';
 import { initI18n, t, setLanguage, getLanguage, updateDOM } from 'i18n';
-import { initUX, toast, confirm as confirmModal, registerModal, popModal } from 'ux';
+import { initUX, toast, confirm as confirmModal, registerModal, popModal, icon } from 'ux';
 import { getMenu, saveMenu } from 'data';
 import { getImage, saveImage } from 'db';
 
@@ -545,7 +545,7 @@ const renderHelpGuide = (lang = getLanguage()) => {
 
     const flowCards = guide.flow.map((card) => `
         <article class="guide-flow-card">
-            <div class="guide-flow-icon"><i class="fas ${escapeHtml(card.icon)}"></i></div>
+            <div class="guide-flow-icon">${icon(card.icon.replace('fa-', ''))}</div>
             <div class="guide-flow-text">
                 <h4>${escapeHtml(card.title)}</h4>
                 <p>${escapeHtml(card.text)}</p>
@@ -559,9 +559,9 @@ const renderHelpGuide = (lang = getLanguage()) => {
         return `
             <details class="guide-chapter" ${index === 0 ? 'open' : ''}>
                 <summary>
-                    <span class="guide-chapter-icon"><i class="fas ${escapeHtml(chapter.icon)}"></i></span>
+                    <span class="guide-chapter-icon">${icon(chapter.icon.replace('fa-', ''))}</span>
                     <span class="guide-chapter-title">${escapeHtml(chapter.title)}</span>
-                    <span class="guide-chapter-caret"><i class="fas fa-chevron-down"></i></span>
+                    <span class="guide-chapter-caret">${icon('chevron-down')}</span>
                 </summary>
                 <div class="guide-chapter-body">
                     ${lead}

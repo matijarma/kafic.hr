@@ -58,7 +58,7 @@ Kafić.hr is unique because it **doesn't use a central server** to store or pass
 *   **Language:** Pure Vanilla JavaScript (ES Modules).
 *   **Networking:** [Trystero](https://github.com/dmotz/trystero) for WebRTC abstraction.
 *   **Storage:** `localStorage` for state & `IndexedDB` for menu images.
-*   **Icons:** Font Awesome 6.
+*   **Icons:** Inline SVG sprite (no external icon font).
 *   **Manifest:** Full PWA support with `sw.js` for asset caching.
 
 ---
