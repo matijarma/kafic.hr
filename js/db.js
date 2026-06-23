@@ -1,8 +1,9 @@
 
 const DB_NAME = 'barlink_db';
-const DB_VERSION = 2; // v2: adds the 'orders' store (v1 had 'images' only)
+const DB_VERSION = 3; // v3: adds the 'shifts' archive store (v2 added 'orders', v1 had 'images')
 const STORE_IMAGES = 'images';
 const STORE_ORDERS = 'orders';
+const STORE_SHIFTS = 'shifts';
 
 let dbPromise = null;
 
@@ -22,6 +23,10 @@ function openDB() {
             if (!db.objectStoreNames.contains(STORE_ORDERS)) {
                 const os = db.createObjectStore(STORE_ORDERS, { keyPath: 'orderId' });
                 os.createIndex('byTimestamp', 'timestamp', { unique: false });
+            }
+            if (!db.objectStoreNames.contains(STORE_SHIFTS)) {
+                const ss = db.createObjectStore(STORE_SHIFTS, { keyPath: 'shiftId' });
+                ss.createIndex('byStart', 'startTs', { unique: false });
             }
         };
 
@@ -136,6 +141,57 @@ export async function countOrders() {
         const tx = db.transaction(STORE_ORDERS, 'readonly');
         const req = tx.objectStore(STORE_ORDERS).count();
         req.onsuccess = () => resolve(req.result || 0);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+// --- Shift archive (Phase 2, host-local) ---
+// A shift record is a frozen aggregate computed at close time, so analytics and
+// history survive even if the raw order log is later pruned/cleared.
+
+export async function saveShift(record) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_SHIFTS, 'readwrite');
+        const req = tx.objectStore(STORE_SHIFTS).put(record); // put: idempotent by shiftId
+        req.onsuccess = () => resolve(record.shiftId);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+// Most-recent shifts first (descending by startTs), capped at `limit`.
+export async function getRecentShifts(limit = 30) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_SHIFTS, 'readonly');
+        const idx = tx.objectStore(STORE_SHIFTS).index('byStart');
+        const out = [];
+        const req = idx.openCursor(null, 'prev');
+        req.onsuccess = (e) => {
+            const cursor = e.target.result;
+            if (cursor && out.length < limit) { out.push(cursor.value); cursor.continue(); }
+            else resolve(out);
+        };
+        req.onerror = () => reject(req.error);
+    });
+}
+
+export async function getAllShifts() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_SHIFTS, 'readonly');
+        const req = tx.objectStore(STORE_SHIFTS).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+export async function deleteShift(shiftId) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_SHIFTS, 'readwrite');
+        const req = tx.objectStore(STORE_SHIFTS).delete(shiftId);
+        req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
     });
 }

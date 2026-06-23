@@ -74,6 +74,7 @@
                     'orders-core': `./js/orders-core.js${suffix}`,
                     orders: `./js/orders.js${suffix}`,
                     reports: `./js/reports.js${suffix}`,
+                    pricing: `./js/pricing.js${suffix}`,
                     trystero: `./js/trystero.min.js${suffix}`
                 }
             };
@@ -136,6 +137,7 @@
         <symbol id="ic-star" viewBox="0 0 576 512"><path d="M259.3 17.8L194 150.2 47.9 171.5c-26.2 3.8-36.7 36.1-17.7 54.6l105.7 103-25 145.5c-4.5 26.3 23.2 46 46.4 33.7L288 439.6l130.7 68.7c23.2 12.2 50.9-7.4 46.4-33.7l-25-145.5 105.7-103c19-18.5 8.5-50.8-17.7-54.6L382 150.2 316.7 17.8c-11.7-23.6-45.6-23.9-57.4 0z"/></symbol>
         <symbol id="ic-star-o" viewBox="0 0 576 512"><path d="M528.1 171.5L382 150.2 316.7 17.8c-11.7-23.6-45.6-23.9-57.4 0L194 150.2 47.9 171.5c-26.2 3.8-36.7 36.1-17.7 54.6l105.7 103-25 145.5c-4.5 26.3 23.2 46 46.4 33.7L288 439.6l130.7 68.7c23.2 12.2 50.9-7.4 46.4-33.7l-25-145.5 105.7-103c19-18.5 8.5-50.8-17.7-54.6zM388.6 312.3l23.7 138.4L288 385.4l-124.3 65.3 23.7-138.4-100.6-98 139-20.2 62.2-126 62.2 126 139 20.2-100.6 98z"/></symbol>
         <symbol id="ic-github" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></symbol>
+        <symbol id="ic-cup" viewBox="0 0 512 512"><path d="M110 170 h220 v110 c0 60.75 -49.25 110 -110 110 c-60.75 0 -110 -49.25 -110 -110 z M330 205 c66 0 66 125 0 125 v-30 c30 0 30 -65 0 -65 z M86 408 h340 a18 18 0 0 1 0 36 h-340 a18 18 0 0 1 0 -36 z"/></symbol>
     </svg>
 
     <!-- APP CONTAINER -->
@@ -143,7 +145,10 @@
     <!-- GLOBAL HEADER -->
     <header id="main-header" class="app-header">
         <div class="header-left">
-            <a href="/" id="logo-home" class="view-setup-only" aria-label="Close session"><img class="home-logo-img" src="/images/kafichr-logo-circle-alpha-256.png" alt="Kafić.hr"></a>
+            <a href="/" id="logo-home" class="view-setup-only" aria-label="Kafić.hr — close session">
+                <span class="wordmark-tile"><svg class="ic" aria-hidden="true"><use href="#ic-cup"></use></svg></span>
+                <span class="wordmark-text">kafić<span class="hr">.hr</span></span>
+            </a>
             <input type="text" id="header-username" class="editable-label view-setup-only" placeholder="Your Name" aria-label="Username" data-i18n="setup.label_name">
             
             <button id="waiter-exit-btn" class="icon-btn view-waiter-only" aria-label="Exit"><svg class="ic" aria-hidden="true"><use href="#ic-times"></use></svg></button>
@@ -153,6 +158,7 @@
 
             <button id="bartender-back-btn" class="icon-btn view-bartender-only" aria-label="Back"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"></use></svg></button>
             <span class="header-title-text view-bartender-only" data-i18n="bartender.incoming">Incoming Orders</span>
+            <span id="feed-open-pill" class="feed-open-pill view-bartender-only hidden"></span>
 
             <button id="manager-back-btn" class="icon-btn view-manager-only" aria-label="Back"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"></use></svg></button>
             <span class="header-title-text view-manager-only" data-i18n="settings.title">Settings</span>
@@ -191,10 +197,16 @@
             <div id="setup-home" class="setup-slide active">
                 <div class="home-layout">
                     <div class="hero-section">
-                        <img src="/images/kafichr-logo-alpha-512.png" class="hero-logo" alt="Logo">
-                        <h1 class="hero-title" data-i18n="app.tagline">Sync Your Bar</h1>
-                        <p class="hero-subtitle" data-i18n="app.subline">Instant order management.</p>
+                        <span class="hero-badge" data-i18n="home.hero_badge">No server · Offline-ready</span>
+                        <h1 class="hero-title" data-i18n="app.tagline">Sync your bar instantly.</h1>
+                        <p class="hero-subtitle" data-i18n="app.subline">Real-time orders from table to bar.</p>
+                        <svg class="ic hero-cup-bleed" aria-hidden="true"><use href="#ic-cup"></use></svg>
                     </div>
+                    <ol class="step-rail" aria-hidden="true">
+                        <li><span class="step-num">01</span><span class="step-cap" data-i18n="home.step1">Host a code</span></li>
+                        <li><span class="step-num">02</span><span class="step-cap" data-i18n="home.step2">Team joins</span></li>
+                        <li><span class="step-num">03</span><span class="step-cap" data-i18n="home.step3">Start serving</span></li>
+                    </ol>
 
                     <div id="resume-dock" class="resume-card hidden">
                         <div class="resume-content">
@@ -248,15 +260,24 @@
                     <h2 data-i18n="setup.join_title">Enter Code</h2>
                 </div>
                 <div class="center-content">
-                    <p class="helper-text" id="join-hint" aria-live="polite" data-i18n="setup.join_hint">Enter the 6-letter code from the host.</p>
-                    <div class="code-input-group">
-                        <input type="text" id="join-code-input" placeholder="______" inputmode="latin-prose" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-describedby="join-hint">
-                        <div class="input-tools">
-                            <button id="btn-scan" aria-label="Scan QR">📷</button>
-                            <button id="btn-paste" aria-label="Paste">📋</button>
+                    <button class="scanner-rest-card" id="btn-scan" aria-label="Scan QR">
+                        <span class="scan-brackets"><i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i></span>
+                        <span class="scan-line"></span>
+                        <span class="scan-caption" data-i18n="setup.scan_caption">Point at the host's QR code</span>
+                    </button>
+
+                    <div class="or-divider"><span data-i18n="setup.or_enter_code">or enter code</span></div>
+
+                    <div class="code-cells-wrap">
+                        <div id="join-code-cells" class="code-cells" aria-hidden="true">
+                            <span class="code-cell"></span><span class="code-cell"></span><span class="code-cell"></span>
+                            <span class="code-cell"></span><span class="code-cell"></span><span class="code-cell"></span>
                         </div>
+                        <input type="text" id="join-code-input" class="code-input-overlay" placeholder="" inputmode="latin-prose" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" aria-label="Session code" aria-describedby="join-hint">
                     </div>
-                    
+                    <p class="helper-text" id="join-hint" aria-live="polite" data-i18n="setup.join_hint">Enter the 6-letter code from the host.</p>
+                    <button id="btn-paste" class="text-btn" aria-label="Paste">📋 <span data-i18n="actions.paste">Paste</span></button>
+
                     <div class="sync-control-group mt-4">
                         <div class="sync-label-row">
                             <svg class="ic" aria-hidden="true"><use href="#ic-exchange-alt"></use></svg>
@@ -285,11 +306,30 @@
             <!-- Slide 3: Lobby -->
             <div id="setup-lobby" class="setup-slide">
                 <div class="lobby-card">
-                    <div class="qr-box">
-                        <canvas id="qr-canvas"></canvas>
+                    <div id="lobby-code-cells" class="code-cells lobby-cells" aria-hidden="true">
+                        <span class="code-cell"></span><span class="code-cell"></span><span class="code-cell"></span>
+                        <span class="code-cell"></span><span class="code-cell"></span><span class="code-cell"></span>
                     </div>
 
-                    <div class="sync-control-group compact mb-3">
+                    <div class="share-row">
+                        <div class="qr-box">
+                            <canvas id="qr-canvas"></canvas>
+                        </div>
+                        <div class="share-actions">
+                            <button id="btn-copy-link" class="copy-link-btn solid" aria-label="Copy invite link">
+                                <span class="icon">⧉</span>
+                                <span class="text" data-i18n="actions.copy_link">Copy Link</span>
+                            </button>
+                            <span class="qr-caption" data-i18n="lobby.qr_caption">QR for quick join</span>
+                        </div>
+                    </div>
+
+                    <div class="devices-row">
+                        <div class="avatar-stack" id="lobby-avatars"></div>
+                        <span class="devices-count" id="lobby-devices-label"></span>
+                    </div>
+
+                    <div class="sync-control-group compact">
                         <div class="sync-label-row">
                             <svg class="ic" aria-hidden="true"><use href="#ic-exchange-alt"></use></svg>
                             <span data-i18n="setup.sync_mode">Sync Mode</span>
@@ -310,30 +350,23 @@
                         </div>
                     </div>
 
-                    <div class="session-info">
-                        <div class="session-code-row">
-                            <div class="session-code" id="display-code">------</div>
-                            <button id="btn-copy-link" class="copy-link-btn" aria-label="Copy invite link">
-                                <span class="icon">⧉</span>
-                                <span class="text" data-i18n="actions.copy_link">Copy Link</span>
-                            </button>
-                        </div>
-                    </div>
+                    <div id="display-code" class="visually-hidden">------</div>
                 </div>
 
                 <div class="role-selector">
                     <div class="role-cards dashboard-actions">
-                        <button class="role-card" data-role="waiter">
-                            <div class="icon">☕</div>
-                            <div class="text" data-i18n="roles.waiter">Waiter</div>
+                        <button class="role-card role-card--wide selected" data-role="waiter">
+                            <span class="role-icon-tile"><svg class="ic" aria-hidden="true"><use href="#ic-cup"></use></svg></span>
+                            <span class="text" data-i18n="roles.waiter">Waiter</span>
+                            <svg class="ic role-chevron" aria-hidden="true"><use href="#ic-chevron-right"></use></svg>
                         </button>
                         <button class="role-card" data-role="bartender">
-                            <div class="icon">🍸</div>
-                            <div class="text" data-i18n="roles.bartender">Bartender</div>
+                            <span class="role-icon-tile"><svg class="ic" aria-hidden="true"><use href="#ic-cocktail"></use></svg></span>
+                            <span class="text" data-i18n="roles.bartender">Bartender</span>
                         </button>
                         <button id="btn-manage" class="role-card settings-card" aria-label="Settings">
-                            <div class="icon">⚙</div>
-                            <div class="text" data-i18n="settings.title">Settings</div>
+                            <span class="role-icon-tile"><svg class="ic" aria-hidden="true"><use href="#ic-cog"></use></svg></span>
+                            <span class="text" data-i18n="settings.title">Settings</span>
                         </button>
                     </div>
                 </div>
@@ -359,6 +392,7 @@
                     <div class="dock-title">
                         <span id="order-count-badge" class="badge hidden">0</span>
                         <span data-i18n="waiter.current_order">Current Order</span>
+                        <span id="dock-table-chip" class="dock-table-chip hidden"></span>
                     </div>
                     <div class="dock-tools">
                         <button id="btn-nav-tables" class="dock-icon-btn">
@@ -407,7 +441,11 @@
              <div class="sheet-content">
                 <div class="sheet-header">
                     <div class="sheet-title">
-                        <h3 id="qty-item-title">Item</h3>
+                        <span id="qty-item-thumb" class="qty-thumb hidden"><img alt=""></span>
+                        <div class="qty-title-text">
+                            <h3 id="qty-item-title">Item</h3>
+                            <span id="qty-item-each" class="qty-each"></span>
+                        </div>
                         <button id="qty-item-image-btn" class="icon-btn small hidden"><svg class="ic" aria-hidden="true"><use href="#ic-image"></use></svg></button>
                         <div id="qty-item-path" class="pill ghost small hidden"></div>
                     </div>
@@ -419,15 +457,15 @@
                         <div class="qty-value" id="qty-value">1</div>
                         <button class="qty-step" data-step="-1" aria-label="Decrease">−</button>
                     </div>
-                    
+
                     <div class="qty-main">
                         <div class="qty-grid" id="qty-grid-container">
                             <!-- Buttons injected via JS -->
                         </div>
-                        
+                        <input type="text" id="qty-note" class="qty-note-input" data-i18n="waiter.add_note" placeholder="Add a note" maxlength="60">
                         <div class="qty-footer">
                             <button id="btn-clear-qty" class="text-btn danger" data-i18n="actions.clear">Clear</button>
-                            <button id="btn-apply-qty" class="btn-primary full-width large" data-i18n="actions.add">Add to order</button>
+                            <button id="btn-apply-qty" class="btn-primary btn-black full-width large">Add to order</button>
                         </div>
                     </div>
                 </div>
@@ -463,6 +501,14 @@
         <button id="btn-close-scan" class="fab-close">✕</button>
         <video id="scan-video" autoplay playsinline></video>
         <div class="scan-reticle"></div>
+    </div>
+
+    <!-- Order-sent confirmation (waiter) -->
+    <div id="order-sent" class="order-sent-overlay hidden" role="status" aria-live="polite">
+        <div class="order-sent-check"><svg class="ic" aria-hidden="true"><use href="#ic-check-circle"></use></svg></div>
+        <h2 class="order-sent-title" data-i18n="order_sent.title">Sent to the bar</h2>
+        <div id="order-sent-receipt" class="order-sent-receipt"></div>
+        <button id="btn-order-sent-back" class="order-sent-back" data-i18n="order_sent.back">Back to tables</button>
     </div>
 
     <!-- Privacy Policy Modal -->

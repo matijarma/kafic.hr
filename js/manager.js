@@ -1,9 +1,9 @@
-import { getTableCount, setTableCount, getMenu, saveMenu, getShiftStart, startNewShift } from 'data';
-import { saveImage, deleteImage, getImage, getOrdersSince, clearOrders, countOrders } from 'db';
+import { getTableCount, setTableCount, getMenu, saveMenu, getShiftStart, startNewShift, getPriceRules, savePriceRules } from 'data';
+import { saveImage, deleteImage, getImage, getOrdersSince, clearOrders, countOrders, saveShift, getRecentShifts, deleteShift } from 'db';
 import { t, getLanguage } from 'i18n';
 import { toast, confirm, icon } from 'ux';
 import { state } from 'state';
-import { summary, salesByItem, byTable, byWaiter, toCsv } from 'reports';
+import { summary, salesByItem, byTable, byWaiter, toCsv, byHour, averageOrderValue, buildShiftAggregate } from 'reports';
 
 let container = null;
 let activePopover = null;
@@ -50,6 +50,8 @@ function render() {
     container.innerHTML = `
         <div class="manager-container">
             <div class="config-card" id="reports-section"></div>
+            <div class="config-card" id="shift-history-section"></div>
+            <div class="config-card" id="pricing-section"></div>
 
             <div class="config-card compact-row" id="settingtoggles">
                 <div>
@@ -109,6 +111,8 @@ function render() {
 
     // Async-fill the reports section (reads the IndexedDB order log).
     renderReports();
+    renderHistory();
+    renderPricing();
 
     // Bindings
     const inpSlider = container.querySelector('#inp-table-count');
@@ -176,7 +180,8 @@ function renderTree(containerEl, items, depth = 0) {
     items.forEach((item, idx) => {
         const nodeEl = document.createElement('div');
         nodeEl.className = 'node';
-        
+        if (depth === 0) nodeEl.classList.add('node-root');
+
         const hasChildren = item.children && item.children.length > 0;
         const depthStep = Math.min(depth, 8);
         const isFav = !!item.isFavorite;
@@ -192,6 +197,7 @@ function renderTree(containerEl, items, depth = 0) {
                     <input type="text" class="node-input" value="${item.label}" placeholder="${t('manager.label_placeholder')}">
                     ${isFav ? `<span class="node-fav-star">${icon('star')}</span>` : ''}
                     <span class="node-warning hidden" data-action="warn">${t('manager.missing_label')}</span>
+                    ${(!hasChildren && item.track) ? `<span class="node-stock-chip ${(Number(item.stock) || 0) <= 0 ? 'oos' : ((Number(item.stock) || 0) <= 5 ? 'low' : '')}" contenteditable="true" data-action="stock-edit" title="${t('stock.in_stock')}">${Number(item.stock) || 0}</span>` : ''}
                 </div>
                 <div class="node-price-col">
                     <div class="node-price-tag ${hasChildren ? 'hidden' : ''}" contenteditable="true">${item.price || ''}</div>
@@ -248,6 +254,21 @@ function renderTree(containerEl, items, depth = 0) {
             }
         };
 
+        // Inventory stock chip (leaf items with tracking on)
+        const stockChip = nodeEl.querySelector('[data-action="stock-edit"]');
+        if (stockChip) {
+            stockChip.onblur = () => {
+                const v = parseInt(stockChip.innerText, 10);
+                item.stock = isNaN(v) ? 0 : Math.max(0, v);
+                stockChip.innerText = item.stock;
+                stockChip.classList.remove('low', 'oos');
+                if (item.stock <= 0) stockChip.classList.add('oos');
+                else if (item.stock <= 5) stockChip.classList.add('low');
+                saveMenu(getMenu());
+            };
+            stockChip.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); stockChip.blur(); } };
+        }
+
         // Image Handling
         const updateImage = () => {
             if (item.imageId) {
@@ -280,6 +301,9 @@ function renderTree(containerEl, items, depth = 0) {
                 <button class="menu-item" data-act="fav">
                     ${favIcon} ${t('manager.favorite')}
                 </button>
+                ${!hasChildren ? `<button class="menu-item" data-act="stock">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg> ${item.track ? t('stock.untrack') : t('stock.track')}
+                </button>` : ''}
                 <button class="menu-item" data-act="img">
                      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg> ${addImageLabel}
                 </button>
@@ -345,6 +369,15 @@ function renderTree(containerEl, items, depth = 0) {
                 priceTag.classList.add('hidden');
                 childrenContainer.classList.remove('closed');
                 renderTree(childrenContainer, item.children, depth + 1);
+            };
+
+            const stockActBtn = pop.querySelector('[data-act="stock"]');
+            if (stockActBtn) stockActBtn.onclick = () => {
+                item.track = !item.track;
+                if (item.track && item.stock == null) item.stock = 0;
+                saveMenu(getMenu());
+                closePopover();
+                renderTree(containerEl, items, depth);
             };
 
             pop.querySelector('[data-act="img"]').onclick = () => fileInput.click();
@@ -419,6 +452,9 @@ async function renderReports() {
 
     const sum = summary(orders);
     const sinceStr = fmtTime(getShiftStart());
+    const aov = averageOrderValue(orders);
+    const hours = byHour(orders);
+    const peak = hours.reduce((a, b) => (b.orders > a.orders ? b : a), hours[0]);
 
     const payRows = PAY_ORDER
         .filter(k => sum.byPayment[k])
@@ -447,6 +483,14 @@ async function renderReports() {
             <div class="mini-label">${t('reports.payment_breakdown')}</div>
             ${payRows}
         </div>
+        <div class="reports-mini">
+            <div class="mini-stat"><span class="mini-stat-val">${fmtMoney(aov)}</span><span class="mini-stat-label">${t('reports.avg_order')}</span></div>
+            <div class="mini-stat"><span class="mini-stat-val">${peak.orders > 0 ? String(peak.hour).padStart(2, '0') + ':00' : '—'}</span><span class="mini-stat-label">${t('reports.peak_hour')}</span></div>
+        </div>
+        <details class="reports-details">
+            <summary>${t('reports.heatmap')}</summary>
+            ${renderHeatmap(hours)}
+        </details>
         <details class="reports-details">
             <summary>${t('reports.by_item')}</summary>
             <table class="reports-table"><tbody>${itemRows}</tbody></table>
@@ -473,9 +517,22 @@ function bindReportButtons(host, orders) {
     if (exportBtn) exportBtn.onclick = () => exportCsv(orders);
 
     const closeBtn = host.querySelector('#btn-close-shift');
-    if (closeBtn) closeBtn.onclick = () => {
+    if (closeBtn) closeBtn.onclick = async () => {
+        // Archive a frozen aggregate of the closing shift before advancing the boundary.
+        try {
+            if (orders && orders.length) {
+                const agg = buildShiftAggregate(orders, {
+                    shiftId: (crypto.randomUUID ? crypto.randomUUID() : 's-' + Date.now()),
+                    startTs: getShiftStart(),
+                    endTs: Date.now(),
+                    closedBy: state.workerName || ''
+                });
+                await saveShift(agg);
+            }
+        } catch (e) { console.warn('[shift] archive failed', e); }
         startNewShift();
         renderReports();
+        renderHistory();
         toast(t('reports.shift_closed'), 'success');
     };
 
@@ -486,6 +543,150 @@ function bindReportButtons(host, orders) {
             renderReports();
             toast(t('reports.log_cleared'), 'success');
         }
+    };
+}
+
+function renderHeatmap(slots) {
+    const max = Math.max(1, ...slots.map(s => s.revenue));
+    const cells = slots.map(s => {
+        const pct = s.revenue > 0 ? Math.round(15 + (s.revenue / max) * 85) : 0;
+        const bg = pct > 0 ? `background: color-mix(in srgb, var(--accent) ${pct}%, transparent);` : '';
+        const title = `${String(s.hour).padStart(2, '0')}:00 · ${s.orders} · ${fmtMoney(s.revenue)}`;
+        return `<div class="heat-cell" style="${bg}" title="${escHtml(title)}"><span>${s.hour}</span></div>`;
+    }).join('');
+    return `<div class="heatmap">${cells}</div>`;
+}
+
+async function renderHistory() {
+    const host = container && container.querySelector('#shift-history-section');
+    if (!host) return;
+    let shifts = [];
+    try { shifts = await getRecentShifts(30); } catch (e) { console.warn('[history] load failed', e); }
+
+    if (!shifts.length) {
+        host.innerHTML = `<div class="section-header"><label class="section-label">${t('reports.history')}</label></div>
+            <p class="reports-since">${t('reports.no_history')}</p>`;
+        return;
+    }
+
+    const cards = shifts.map(s => {
+        const sum = s.summary || {};
+        const itemRows = (s.byItem || []).slice(0, 20)
+            .map(i => `<tr><td>${escHtml(i.label)}</td><td class="num">${i.qty}</td><td class="num">${fmtMoney(i.revenue)}</td></tr>`).join('');
+        return `<details class="shift-history-item">
+            <summary>
+                <span class="sh-range">${escHtml(fmtTime(s.startTs))}</span>
+                <span class="sh-kpi">${sum.orderCount || 0} · ${fmtMoney(sum.revenue || 0)}</span>
+            </summary>
+            <div class="sh-body">
+                <div class="reports-kpis">
+                    <div class="kpi"><span class="kpi-val">${sum.orderCount || 0}</span><span class="kpi-label">${t('reports.orders')}</span></div>
+                    <div class="kpi"><span class="kpi-val">${sum.itemCount || 0}</span><span class="kpi-label">${t('reports.items')}</span></div>
+                    <div class="kpi accent"><span class="kpi-val">${fmtMoney(sum.revenue || 0)}</span><span class="kpi-label">${t('reports.revenue')}</span></div>
+                </div>
+                ${itemRows ? `<table class="reports-table"><tbody>${itemRows}</tbody></table>` : ''}
+                <div class="reports-actions"><button class="btn-ghost danger-text" data-del-shift="${escHtml(s.shiftId)}">${t('actions.remove')}</button></div>
+            </div>
+        </details>`;
+    }).join('');
+
+    host.innerHTML = `<div class="section-header"><label class="section-label">${t('reports.history')}</label></div>${cards}`;
+    host.querySelectorAll('[data-del-shift]').forEach(btn => {
+        btn.onclick = async () => {
+            try { await deleteShift(btn.getAttribute('data-del-shift')); } catch (e) {}
+            renderHistory();
+        };
+    });
+}
+
+function flattenMenuOptions(menu) {
+    const opts = [];
+    const walk = (nodes, prefix) => {
+        (nodes || []).forEach(n => {
+            const label = (prefix ? prefix + ' › ' : '') + (n.label || '?');
+            if (n.children) { opts.push({ type: 'cat', id: n.id, label: label + ' ▸' }); walk(n.children, label); }
+            else opts.push({ type: 'item', id: n.id, label });
+        });
+    };
+    walk(menu, '');
+    return opts;
+}
+
+function renderPricing() {
+    const host = container && container.querySelector('#pricing-section');
+    if (!host) return;
+    const rules = getPriceRules();
+    const opts = flattenMenuOptions(getMenu());
+    const days = getLanguage() === 'hr' ? ['N', 'P', 'U', 'S', 'Č', 'P', 'S'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+    const ruleRows = rules.map(r => {
+        const scopeLabel = (opts.find(o => o.type === (r.scope && r.scope.type) && o.id === (r.scope && r.scope.id)) || {}).label || '—';
+        const win = (r.from && r.to) ? `${r.from}–${r.to}` : t('pricing.all_day');
+        const modeLabel = r.mode === 'abs' ? fmtMoney(r.value) : (r.mode === 'pct' ? `−${r.value}%` : `${r.value > 0 ? '+' : ''}${r.value} €`);
+        return `<div class="price-rule ${r.active === false ? 'inactive' : ''}">
+            <div class="pr-main">
+                <span class="pr-label">${escHtml(r.label || t('pricing.rule'))}</span>
+                <span class="pr-meta">${escHtml(scopeLabel)} · ${escHtml(win)} · ${escHtml(modeLabel)}</span>
+            </div>
+            <button class="icon-btn small" data-toggle-rule="${escHtml(r.id)}" aria-label="toggle">${r.active === false ? icon('play') : icon('check-circle')}</button>
+            <button class="icon-btn small" data-del-rule="${escHtml(r.id)}" aria-label="delete">${icon('trash')}</button>
+        </div>`;
+    }).join('');
+
+    host.innerHTML = `
+        <div class="section-header"><label class="section-label">${t('pricing.title')}</label></div>
+        <div class="price-rule-list">${ruleRows || `<p class="reports-since">${t('pricing.none')}</p>`}</div>
+        <details class="reports-details">
+            <summary>＋ ${t('pricing.add_rule')}</summary>
+            <div class="rule-form">
+                <input type="text" id="pr-label" class="rule-input" placeholder="${t('pricing.label_ph')}" maxlength="40">
+                <select id="pr-scope" class="rule-input">${opts.map(o => `<option value="${o.type}:${escHtml(o.id)}">${escHtml(o.label)}</option>`).join('')}</select>
+                <div class="rule-row">
+                    <select id="pr-mode" class="rule-input">
+                        <option value="pct">${t('pricing.pct')}</option>
+                        <option value="abs">${t('pricing.abs')}</option>
+                        <option value="delta">${t('pricing.delta')}</option>
+                    </select>
+                    <input type="number" id="pr-value" class="rule-input" step="0.01" placeholder="0">
+                </div>
+                <div class="rule-row">
+                    <input type="time" id="pr-from" class="rule-input" aria-label="${t('pricing.from')}">
+                    <input type="time" id="pr-to" class="rule-input" aria-label="${t('pricing.to')}">
+                </div>
+                <div class="rule-days">${days.map((d, i) => `<label class="day-chip"><input type="checkbox" value="${i}"><span>${d}</span></label>`).join('')}</div>
+                <button class="btn-primary full-width" id="pr-save">${t('actions.save')}</button>
+            </div>
+        </details>
+    `;
+
+    host.querySelectorAll('[data-del-rule]').forEach(btn => {
+        btn.onclick = () => { savePriceRules(getPriceRules().filter(r => r.id !== btn.getAttribute('data-del-rule'))); renderPricing(); };
+    });
+    host.querySelectorAll('[data-toggle-rule]').forEach(btn => {
+        btn.onclick = () => {
+            const id = btn.getAttribute('data-toggle-rule');
+            const list = getPriceRules().map(r => r.id === id ? { ...r, active: r.active === false } : r);
+            savePriceRules(list); renderPricing();
+        };
+    });
+    const saveBtn = host.querySelector('#pr-save');
+    if (saveBtn) saveBtn.onclick = () => {
+        const scopeRaw = host.querySelector('#pr-scope').value || '';
+        const [stype, ...idParts] = scopeRaw.split(':');
+        const rule = {
+            id: (crypto.randomUUID ? crypto.randomUUID() : 'r-' + Date.now()),
+            label: (host.querySelector('#pr-label').value || '').trim() || t('pricing.rule'),
+            scope: { type: stype, id: idParts.join(':') },
+            mode: host.querySelector('#pr-mode').value,
+            value: parseFloat(host.querySelector('#pr-value').value) || 0,
+            days: [...host.querySelectorAll('.rule-days input:checked')].map(c => Number(c.value)),
+            from: host.querySelector('#pr-from').value || '',
+            to: host.querySelector('#pr-to').value || '',
+            active: true
+        };
+        savePriceRules([...getPriceRules(), rule]);
+        renderPricing();
+        toast(t('pricing.saved'), 'success');
     };
 }
 

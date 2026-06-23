@@ -3,12 +3,20 @@ import { toast, toastAction, icon } from 'ux';
 import { state } from 'state';
 import { broadcast, selfId } from 'network';
 import { readJSON, writeJSON, readSet, writeSet, scopedKey } from 'storage';
-import { saveOrder } from 'db';
-import { getMenu, ensureShiftStart } from 'data';
+import { saveOrder, getOrdersSince } from 'db';
+import { getMenu, saveMenu, ensureShiftStart, getShiftStart, getPriceRules } from 'data';
+import { buildEffectivePriceMap } from 'pricing';
 
 const feed = document.getElementById('bartender-feed');
+const openPill = document.getElementById('feed-open-pill');
 const tableCards = new Map();
 let onComplete = () => {};
+
+// Order age buckets for the colour-coded left bar (recomputed on a tick).
+const computeAgeClass = (ts) => {
+    const ageMs = Date.now() - (ts || Date.now());
+    return ageMs < 60000 ? 'fresh' : ageMs < 240000 ? 'aging' : 'overdue';
+};
 
 // --- Persistence + dedup (host-local) ---
 const barOrdersKey = () => scopedKey('kafic_bar_orders', state.sessionCode);
@@ -19,16 +27,9 @@ const removeBarOrder = (orderId) => {
     if (i >= 0) { state.barOrders.splice(i, 1); persistBarOrders(); }
 };
 
-// Build an id -> price lookup from the host's own menu (waiters never send price).
-const buildPriceMap = () => {
-    const map = {};
-    const walk = (nodes) => (nodes || []).forEach(n => {
-        if (n.children) walk(n.children);
-        else if (n.id != null) map[n.id] = n.price;
-    });
-    walk(getMenu());
-    return map;
-};
+// Build an id -> price lookup from the host's own menu (waiters never send price),
+// applying any active scheduled-pricing rules at capture time (authoritative).
+const buildPriceMap = () => buildEffectivePriceMap(getMenu(), getPriceRules(), new Date());
 
 // Persist a received order to the host-local log (IndexedDB), snapshotting prices
 // at capture time so later menu edits don't rewrite past shift revenue.
@@ -39,7 +40,7 @@ const persistOrder = async (data) => {
         const items = (data.items || []).map(it => {
             const qty = it.qty || 0;
             const unitPrice = typeof prices[it.id] === 'number' ? prices[it.id] : 0;
-            return { id: it.id, label: it.label, qty, unitPrice, lineTotal: Math.round(unitPrice * qty * 100) / 100 };
+            return { id: it.id, label: it.label, qty, unitPrice, lineTotal: Math.round(unitPrice * qty * 100) / 100, note: it.note || '' };
         });
         const orderTotal = Math.round(items.reduce((s, i) => s + i.lineTotal, 0) * 100) / 100;
         const waiterName = (state.peers[data.senderId] && state.peers[data.senderId].name)
@@ -56,6 +57,24 @@ const persistOrder = async (data) => {
             items,
             orderTotal
         });
+
+        // Inventory: decrement tracked leaf nodes (host-authoritative) + broadcast updates.
+        try {
+            const menu = getMenu();
+            const byId = {};
+            const walk = (nodes) => (nodes || []).forEach(n => { if (n.children) walk(n.children); else if (n.id != null) byId[n.id] = n; });
+            walk(menu);
+            let changed = false;
+            (data.items || []).forEach(it => {
+                const node = byId[it.id];
+                if (node && node.track) {
+                    node.stock = Math.max(0, (Number(node.stock) || 0) - (it.qty || 0));
+                    changed = true;
+                    broadcast({ type: 'stock-update', id: it.id, stock: node.stock });
+                }
+            });
+            if (changed) saveMenu(menu);
+        } catch (e) { /* inventory is best-effort, never block */ }
     } catch (e) {
         console.warn('[reports] persistOrder failed', e); // never block order display
     }
@@ -74,8 +93,21 @@ try {
     ctx = null;
 }
 
+let ageTick = null;
+const AGE_TICK_MS = 30000;
+const refreshAges = () => {
+    orderRegistry.forEach(({ orderEl, data }) => {
+        if (!orderEl) return;
+        const cls = computeAgeClass(data.timestamp);
+        orderEl.classList.remove('fresh', 'aging', 'overdue');
+        orderEl.classList.add(cls);
+    });
+};
+
 export const initBartender = () => {
     render();
+    if (ageTick) clearInterval(ageTick);
+    ageTick = setInterval(refreshAges, AGE_TICK_MS);
 };
 
 export const setOrderCompletionHandler = (fn) => {
@@ -158,6 +190,7 @@ const createTableCard = (tableId) => {
     let html = `
         <div class="feed-header">
             <div class="feed-title-row">
+                <span class="feed-table-chip">${tableId}</span>
                 <span class="feed-title">${t('bartender.table_label', { table: tableId })}</span>
                 <span class="feed-count" data-count>0</span>
             </div>
@@ -196,16 +229,17 @@ const addOrderToCard = (card, data) => {
         return `
         <div class="feed-item" ${style}>
             <div class="feed-item-name">
-                <span class="qty">${item.qty}x</span> 
+                <span class="qty">${item.qty}×</span>
                 <span class="label-text">${item.label}</span>
             </div>
             ${item.context ? `<div class="feed-item-context">${item.context}</div>` : ''}
+            ${item.note ? `<div class="feed-item-note">“${item.note}”</div>` : ''}
         </div>
         `;
     }).join('');
 
     const orderEl = document.createElement('div');
-    orderEl.className = 'feed-order';
+    orderEl.className = 'feed-order ' + computeAgeClass(data.timestamp);
     orderEl.dataset.orderId = data.orderId;
     orderEl.innerHTML = `
         <div class="feed-order-header">
@@ -213,11 +247,11 @@ const addOrderToCard = (card, data) => {
                 <span class="feed-order-time">${time}</span>
                 ${payIcon}
             </div>
-            <button class="feed-btn feed-order-done" data-action="done">${t('actions.mark_done')}</button>
         </div>
         <div class="feed-order-items">
             ${itemsHtml}
         </div>
+        <button class="feed-btn feed-order-done" data-action="done">${icon('check-circle')} ${t('actions.mark_done')}</button>
     `;
 
     orderRegistry.set(data.orderId, { orderEl, card, data });
@@ -268,9 +302,25 @@ const addOrderToCard = (card, data) => {
 const visibleOrderCount = (card) =>
     [...card.ordersEl.children].filter(c => !c.classList.contains('completing')).length;
 
+const totalOpen = () => {
+    let n = 0;
+    tableCards.forEach(c => { n += visibleOrderCount(c); });
+    return n;
+};
+const updateOpenPill = () => {
+    if (!openPill) return;
+    const n = totalOpen();
+    if (n > 0) {
+        openPill.textContent = t('bartender.open_count', { count: n });
+        openPill.classList.remove('hidden');
+    } else {
+        openPill.classList.add('hidden');
+    }
+};
+
 const updateTableCount = (card) => {
-    if (!card?.countEl) return;
-    card.countEl.textContent = visibleOrderCount(card);
+    if (card?.countEl) card.countEl.textContent = visibleOrderCount(card);
+    updateOpenPill();
 };
 
 const refreshCardVisual = (card) => {
@@ -351,13 +401,25 @@ const finalizeCompletion = (orderId) => {
 };
 
 const checkEmpty = () => {
+    updateOpenPill();
     if (tableCards.size === 0) {
         feed.innerHTML = `
             <div class="empty-state">
-                <div class="icon">✓</div>
-                <p>${t('bartender.all_done')}</p>
+                <div class="empty-state-tile">
+                    ${icon('cup')}
+                    <span class="empty-check">${icon('check-circle')}</span>
+                </div>
+                <p class="empty-title">${t('bartender.all_done')}</p>
+                <p class="empty-sub">${t('bartender.empty_sub')}</p>
+                <span class="listening-pill"><span class="dot"></span>${t('bartender.listening')}</span>
+                <div class="served-stat"><span id="served-today">—</span></div>
             </div>
         `;
+        // Served-today is host-local and async; fill it in after rendering (advisory).
+        getOrdersSince(getShiftStart()).then(list => {
+            const el = document.getElementById('served-today');
+            if (el) el.textContent = t('bartender.served_today', { count: Array.isArray(list) ? list.length : 0 });
+        }).catch(() => {});
     }
 };
 

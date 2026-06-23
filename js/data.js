@@ -193,3 +193,13 @@ export const startNewShift = () => {
 export const ensureShiftStart = () => {
     if (!getShiftStart()) startNewShift();
 };
+
+// --- Scheduled pricing rules (Phase 2) ---
+const PRICE_RULES_KEY = 'barlink_price_rules';
+export const getPriceRules = () => {
+    try { const v = JSON.parse(localStorage.getItem(PRICE_RULES_KEY)); return Array.isArray(v) ? v : []; }
+    catch (e) { return []; }
+};
+export const savePriceRules = (rules) => {
+    localStorage.setItem(PRICE_RULES_KEY, JSON.stringify(Array.isArray(rules) ? rules : []));
+};

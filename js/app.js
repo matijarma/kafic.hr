@@ -9,7 +9,7 @@ import { initManager } from 'manager';
 import { renderQR } from 'qr';
 import { initI18n, t, setLanguage, getLanguage, updateDOM } from 'i18n';
 import { initUX, toast, confirm as confirmModal, registerModal, popModal, icon } from 'ux';
-import { getMenu, saveMenu, ensureShiftStart } from 'data';
+import { getMenu, saveMenu, ensureShiftStart, getPriceRules, savePriceRules } from 'data';
 import { getImage, saveImage } from 'db';
 
 // Elements
@@ -48,6 +48,7 @@ const resumeCodeDisplay = document.getElementById('resume-code-display');
 
 // Join
 const joinInput = document.getElementById('join-code-input');
+const joinCells = document.getElementById('join-code-cells');
 const btnConfirmJoin = document.getElementById('btn-confirm-join');
 const btnScan = document.getElementById('btn-scan');
 const btnPaste = document.getElementById('btn-paste');
@@ -58,6 +59,9 @@ const qrCanvas = document.getElementById('qr-canvas');
 const displayCode = document.getElementById('display-code');
 const btnCopyLink = document.getElementById('btn-copy-link');
 const peerCountLabel = document.getElementById('peer-count-label');
+const lobbyCodeCells = document.getElementById('lobby-code-cells');
+const lobbyAvatars = document.getElementById('lobby-avatars');
+const lobbyDevicesLabel = document.getElementById('lobby-devices-label');
 const leaveLobbyBtn = document.getElementById('leave-lobby-btn');
 const btnManage = document.getElementById('btn-manage');
 const roleBtns = document.querySelectorAll('.role-card[data-role]');
@@ -179,6 +183,30 @@ const extractJoinTokens = (raw = '') => {
 
 const QR_HOST = 'https://kafić.hr';
 const buildQrUrl = () => `${QR_HOST}/?n=${state.sessionCode}`;
+
+// Paint a 6-cell segmented code display (shared by lobby read-only + join input mirror).
+function paintCodeCells(container, value, activeIndex) {
+    if (!container) return;
+    const cells = container.querySelectorAll('.code-cell');
+    const chars = String(value || '').toUpperCase().split('');
+    cells.forEach((cell, i) => {
+        cell.textContent = chars[i] || '';
+        cell.classList.toggle('filled', i < chars.length);
+        cell.classList.toggle('active', activeIndex === i);
+    });
+}
+
+// Overlapping avatar stack of connected devices (self + peers) for the lobby.
+function renderLobbyAvatars() {
+    if (!lobbyAvatars) return;
+    const peers = Object.values(state.peers || {});
+    const all = [{ name: state.workerName || 'You', self: true }, ...peers];
+    lobbyAvatars.innerHTML = all.slice(0, 6).map(p => {
+        const initials = String(p.name || '?').trim().slice(0, 2).toUpperCase() || '?';
+        return `<span class="avatar${p.self ? ' avatar-self' : ''}">${initials}</span>`;
+    }).join('');
+    if (lobbyDevicesLabel) lobbyDevicesLabel.textContent = t('lobby.devices_connected', { count: all.length });
+}
 
 const buildShareUrl = async () => {
     const origin = window.location.origin;
@@ -913,6 +941,10 @@ async function syncJoinControls() {
     const raw = joinInput.value.trim();
     const { join } = extractJoinTokens(raw);
 
+    // Mirror the (source-of-truth) input into the 6 segmented display cells.
+    const codeChars = (join || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    paintCodeCells(joinCells, codeChars, Math.min(codeChars.length, 5));
+
     if (!join) {
         btnConfirmJoin.disabled = true;
         setJoinStatus(t('setup.join_hint'));
@@ -1114,6 +1146,7 @@ function initSessionState(code, isHost) {
 
 async function setupLobbyUI() {
     displayCode.textContent = state.sessionCode;
+    paintCodeCells(lobbyCodeCells, state.sessionCode);
     const qrUrl = buildQrUrl();
     const rendered = renderQR(qrCanvas, qrUrl, 180);
     if (!rendered) {
@@ -1223,6 +1256,17 @@ function routeMessage(data, peerId) {
         case 'sync-menu':
             handleSyncData(data);
             break;
+        case 'stock-update': {
+            // A peer (host) decremented inventory — patch our local menu node + refresh.
+            try {
+                const menu = getMenu();
+                const walk = (nodes) => { for (const n of nodes || []) { if (n.children) walk(n.children); else if (n.id === data.id) n.stock = data.stock; } };
+                walk(menu);
+                saveMenu(menu);
+                refreshWaiter();
+            } catch (e) {}
+            break;
+        }
     }
 }
 
@@ -1238,6 +1282,7 @@ function announceSelf(targetId) {
 function updatePeerUI() {
     const count = Object.keys(state.peers).length;
     const online = navigator.onLine;
+    renderLobbyAvatars();
     
     headerConns.forEach(headerConn => {
         const dot = headerConn.querySelector('.dot');
@@ -1617,6 +1662,7 @@ async function sendSyncData(targetId) {
     const payload = {
         type: 'sync-menu',
         menu: menu,
+        rules: getPriceRules(),
         timestamp: Date.now()
     };
     broadcast(payload, targetId);
@@ -1687,7 +1733,8 @@ async function handleSyncData(data) {
         logMsg(t('setup.sync_final'));
         setTimeout(() => {
             saveMenu(data.menu);
-            
+            if (Array.isArray(data.rules)) savePriceRules(data.rules);
+
             logMsg(t('setup.sync_done'));
             toast(t('setup.sync_complete') || t('setup.sync_done'), 'success');
             

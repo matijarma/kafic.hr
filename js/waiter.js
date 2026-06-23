@@ -1,4 +1,5 @@
-import { getMenu, getTables } from 'data';
+import { getMenu, getTables, getPriceRules } from 'data';
+import { buildEffectivePriceMap } from 'pricing';
 import { getImage } from 'db';
 import { state, resetWaiterState } from 'state';
 import { broadcast, selfId, getPeerCount } from 'network';
@@ -22,6 +23,7 @@ const sendBtn = document.getElementById('btn-send-order');
 const clearBtn = document.getElementById('btn-clear-order');
 const navTablesBtn = document.getElementById('btn-nav-tables');
 const pendingStrip = document.getElementById('pending-strip');
+const dockTableChip = document.getElementById('dock-table-chip');
 
 // Qty Modal
 const qtyModal = document.getElementById('qty-modal');
@@ -35,6 +37,12 @@ const qtyValue = document.getElementById('qty-value');
 const closeQtyBtn = document.getElementById('btn-close-qty');
 const clearQtyBtn = document.getElementById('btn-clear-qty');
 const applyQtyBtn = document.getElementById('btn-apply-qty');
+const qtyNote = document.getElementById('qty-note');
+const qtyThumb = document.getElementById('qty-item-thumb');
+const qtyEach = document.getElementById('qty-item-each');
+const orderSent = document.getElementById('order-sent');
+const orderSentReceipt = document.getElementById('order-sent-receipt');
+const orderSentBack = document.getElementById('btn-order-sent-back');
 const qtySteps = document.querySelectorAll('.qty-step');
 const payBtns = document.querySelectorAll('.compact-payment .pay-btn');
 
@@ -56,6 +64,11 @@ const getItemPriceText = (item) => {
     if (!item || item.price === null || item.price === undefined) return '';
     return String(item.price).trim();
 };
+
+// Waiters carry no price on order items, so resolve from the menu (same as the bar),
+// applying active scheduled-pricing rules so the running total matches what the bar charges.
+const buildPriceById = () => buildEffectivePriceMap(getMenu(), getPriceRules(), new Date());
+const formatMoney = (n) => `${(Math.round((n || 0) * 100) / 100).toFixed(2)} €`;
 
 const COLORIZE_PALETTE = [
     [244, 114, 182],
@@ -201,6 +214,8 @@ export const initWaiter = () => {
     closeQtyBtn.onclick = () => {
         closeQtyModal();
     };
+
+    if (orderSentBack) orderSentBack.onclick = hideOrderSent;
     
     // Qty Modal Close on Backdrop
     qtyModal.onclick = (e) => {
@@ -382,8 +397,15 @@ const setQty = (value) => {
     updateQtyDisplay();
 };
 const stepQty = (delta) => setQty(pendingQty + delta);
+const updateApplyButton = () => {
+    if (!applyQtyBtn) return;
+    const price = pendingItem ? (parseFloat(pendingItem.price) || 0) : 0;
+    const totalHtml = price > 0 ? `<span class="apply-total">${formatMoney(price * pendingQty)}</span>` : '';
+    applyQtyBtn.innerHTML = `<span class="apply-label">${t('actions.add')}</span>${totalHtml}`;
+};
 const updateQtyDisplay = () => {
     qtyValue.textContent = pendingQty;
+    updateApplyButton();
 };
 
 const togglePayment = (method) => {
@@ -446,14 +468,32 @@ const renderTables = () => {
     }
     
     const tables = getTables();
-    
+
+    // Per-table pending-order count (from the durable outbound queue).
+    const pendingByTable = new Map();
+    getPending().forEach(e => {
+        const tid = e.order && e.order.tableId;
+        if (tid != null) pendingByTable.set(tid, (pendingByTable.get(tid) || 0) + 1);
+    });
+
     tables.forEach(tbl => {
         const el = document.createElement('button');
         el.className = 'grid-item';
-        if (state.unclearedTables.has(tbl.id)) {
+        const count = pendingByTable.get(tbl.id) || 0;
+        if (count > 0 || state.unclearedTables.has(tbl.id)) {
             el.classList.add('has-orders');
         }
-        el.innerHTML = `<div style="font-size:1.8em">${tbl.id}</div>`;
+        if (count > 0) {
+            el.dataset.pending = count;
+            const badge = document.createElement('span');
+            badge.className = 'tile-count-badge';
+            badge.textContent = count;
+            el.appendChild(badge);
+        }
+        const num = document.createElement('div');
+        num.className = 'tile-num';
+        num.textContent = tbl.id;
+        el.appendChild(num);
         el.onclick = () => {
             state.currentTable = tbl;
             state.currentPath = [];
@@ -525,7 +565,10 @@ const renderMenu = (items) => {
                     <span class="grid-item-label">${item.label}</span>
                 </div>
             `;
-            
+
+            const oos = item.track && (Number(item.stock) || 0) <= 0;
+            if (oos) el.classList.add('out-of-stock');
+
             let pressTimer = null;
             let startX = 0;
             let startY = 0;
@@ -538,7 +581,7 @@ const renderMenu = (items) => {
                 pressTimer = setTimeout(() => {
                     longPressTriggered = true;
                     if (navigator.vibrate) navigator.vibrate(20);
-                    openQty(item);
+                    if (oos) toast(t('stock.out_of_stock'), 'error'); else openQty(item);
                 }, 400);
             }, { passive: true });
 
@@ -557,7 +600,7 @@ const renderMenu = (items) => {
             
             el.onclick = (e) => {
                 if (!longPressTriggered) {
-                    quickAdd(item);
+                    if (oos) toast(t('stock.out_of_stock'), 'error'); else quickAdd(item);
                 }
             };
 
@@ -599,8 +642,10 @@ export const navigateBack = () => {
 const openQty = (item) => {
     pendingItem = item;
     pendingQty = 1;
-    const priceText = getItemPriceText(item);
-    qtyTitle.textContent = priceText ? `${item.label} (${priceText})` : item.label;
+    qtyTitle.textContent = item.label;
+    const price = parseFloat(item.price) || 0;
+    if (qtyEach) qtyEach.textContent = price > 0 ? `${formatMoney(price)} ${t('waiter.each')}` : '';
+    if (qtyNote) qtyNote.value = '';
     loadQtyItemImage(item);
     const context = state.currentPath.map(p => p.label).join(' › ');
     if (qtyPath) {
@@ -629,7 +674,8 @@ const confirmQty = (qty) => {
         label: pendingItem.label,
         qty: finalQty,
         context,
-        color
+        color,
+        note: qtyNote ? (qtyNote.value || '').trim() : ''
     });
     
     closeQtyModal();
@@ -694,6 +740,11 @@ const resetQtyImageState = (hideButton = true) => {
     hideQtyImagePreview();
     clearQtyImageObjectUrl();
     if (qtyImagePreviewImg) qtyImagePreviewImg.removeAttribute('src');
+    if (qtyThumb) {
+        qtyThumb.classList.add('hidden');
+        const im = qtyThumb.querySelector('img');
+        if (im) im.removeAttribute('src');
+    }
     if (qtyImageBtn) {
         if (hideButton) qtyImageBtn.classList.add('hidden');
         qtyImageBtn.disabled = true;
@@ -709,6 +760,11 @@ const loadQtyItemImage = async (item) => {
         if (!blob || token !== qtyImageLoadToken || !pendingItem || pendingItem.id !== item.id) return;
         qtyImageObjectUrl = URL.createObjectURL(blob);
         qtyImagePreviewImg.src = qtyImageObjectUrl;
+        if (qtyThumb) {
+            const im = qtyThumb.querySelector('img');
+            if (im) im.src = qtyImageObjectUrl;
+            qtyThumb.classList.remove('hidden');
+        }
         qtyImageBtn.disabled = false;
         qtyImageBtn.classList.remove('hidden');
     } catch (e) {
@@ -763,20 +819,33 @@ const closeQtyModal = (syncHistory = true) => {
 
 const renderOrderDock = () => {
     const count = state.currentOrder.length;
-    
+    const priceMap = buildPriceById();
+    const lineTotal = (it) => (priceMap[it.id] || 0) * (it.qty || 0);
+    const total = state.currentOrder.reduce((s, it) => s + lineTotal(it), 0);
+
+    // Table chip in the summary row.
+    if (dockTableChip) {
+        if (state.currentTable) {
+            dockTableChip.textContent = t('bartender.table_label', { table: state.currentTable.id });
+            dockTableChip.classList.remove('hidden');
+        } else {
+            dockTableChip.classList.add('hidden');
+        }
+    }
+
     if (count === 0) {
         orderCountBadge.classList.add('hidden');
         orderListContainer.classList.add('is-empty');
         orderListContainer.innerHTML = `<div class="empty-msg">${t('waiter.empty_order')}</div>`;
         sendBtn.disabled = true;
-        sendBtn.textContent = t('actions.send');
+        sendBtn.innerHTML = `<span class="send-label">${t('actions.send')}</span>`;
         scheduleOrderLayout(0);
     } else {
         orderCountBadge.classList.remove('hidden');
         orderCountBadge.textContent = count;
         sendBtn.disabled = false;
-        sendBtn.textContent = `${t('actions.send')} (${count})`;
-        
+        sendBtn.innerHTML = `<span class="send-label">${t('actions.send')}</span><span class="send-total">${formatMoney(total)}</span>`;
+
         orderListContainer.classList.remove('is-empty');
         orderListContainer.innerHTML = '';
         state.currentOrder.forEach((item, idx) => {
@@ -784,12 +853,14 @@ const renderOrderDock = () => {
             row.className = 'order-item';
             let metaHtml = '';
             if (item.context) metaHtml += `<span class="muted">${item.context}</span>`;
-            
+            if (item.note) metaHtml += `<span class="order-item-note">“${item.note}”</span>`;
+
             row.innerHTML = `
                 <div class="order-item-info">
-                    <div class="name"><span class="qty">${item.qty}x</span> ${item.label}</div>
-                    <div style="font-size:0.8em; line-height:1.2">${metaHtml}</div>
+                    <div class="name"><span class="qty">${item.qty}×</span> ${item.label}</div>
+                    <div class="order-item-meta">${metaHtml}</div>
                 </div>
+                <span class="order-item-price">${formatMoney(lineTotal(item))}</span>
                 <button class="order-item-remove" aria-label="${t('actions.remove')}">✕</button>
             `;
             row.querySelector('.order-item-remove').onclick = () => {
@@ -815,6 +886,32 @@ const newOrderId = () =>
     (crypto.randomUUID
         ? crypto.randomUUID()
         : `${selfId}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+// Order-sent confirmation overlay — additive UI shown in parallel with the existing
+// toast/ack flow (NOT a <dialog>/registerModal, so it never touches the back-guard stack).
+let orderSentTimer = null;
+const hideOrderSent = () => {
+    if (orderSentTimer) { clearTimeout(orderSentTimer); orderSentTimer = null; }
+    if (orderSent) orderSent.classList.add('hidden');
+};
+const showOrderSent = (payload) => {
+    if (!orderSent) return;
+    const priceMap = buildPriceById();
+    const lineT = (it) => (priceMap[it.id] || 0) * (it.qty || 0);
+    const total = (payload.items || []).reduce((s, it) => s + lineT(it), 0);
+    const rows = (payload.items || []).map(it =>
+        `<div class="os-row"><span class="os-qty">${it.qty}×</span><span class="os-name">${it.label}</span><span class="os-price">${formatMoney(lineT(it))}</span></div>`
+    ).join('');
+    if (orderSentReceipt) {
+        orderSentReceipt.innerHTML =
+            `<div class="os-table">${t('bartender.table_label', { table: payload.tableId })}</div>` +
+            `<div class="os-items">${rows}</div>` +
+            `<div class="os-total"><span>${t('order_sent.total')}</span><span>${formatMoney(total)}</span></div>`;
+    }
+    orderSent.classList.remove('hidden');
+    if (orderSentTimer) clearTimeout(orderSentTimer);
+    orderSentTimer = setTimeout(hideOrderSent, 1600);
+};
 
 const sendOrder = () => {
     if (!state.currentTable || state.currentOrder.length === 0) return;
@@ -850,6 +947,9 @@ const sendOrder = () => {
     } else {
         toast(t('alerts.order_sending'), 'info');         // ack will flip it to delivered
     }
+
+    // 2b. Brief full-bleed confirmation (parallel to the toast/ack flow above).
+    showOrderSent(payload);
 
     // 3. Mark table as having pending orders (persisted) and reset the builder.
     state.unclearedTables.add(state.currentTable.id);

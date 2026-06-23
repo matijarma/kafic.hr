@@ -1,12 +1,14 @@
 export const locales = {
     en: {
-        app: { tagline: "Kafić.hr", subline: "Real-time order management" },
+        app: { tagline: "Sync your bar instantly.", subline: "Orders fly from table to bar in real time — no server, fully offline." },
+        home: { hero_badge: "No server · Offline-ready", step1: "Host a code", step2: "Team joins", step3: "Start serving" },
         settings: { title: "Settings", theme: "Theme", lang: "Language", reset: "Factory Reset", handed: "Hand", left: "Left", right: "Right" , on: "ON" , off: "OFF" , solomode: "Solo mode"},
         setup: {
             host: "Start Session", join: "Join Session", resume: "Reconnect",
             join_title: "Enter Code", lobby: "Connection Hub",
             label_name: "Display Name", select_role: "Select Role",
             scan_hint: "Scan QR", no_peers: "Waiting for staff...",
+            scan_caption: "Point at the host's QR code", or_enter_code: "or enter code",
             join_hint: "Enter the session code from the host device.",
             connecting: "Connecting...",
             resuming: "Restoring session...",
@@ -38,13 +40,16 @@ export const locales = {
             sync_tooltip: "Choose how menu data is shared. 'Send' pushes your menu to others. 'Receive' updates your menu from the host."
         },
         roles: { waiter: "Waiter", bartender: "Bartender" },
+        lobby: { devices_connected: "{count} devices connected", qr_caption: "QR for quick join" },
         waiter: {
             select_table: "Select Table", table_short: "Tbl",
             current_order: "Current Order", empty: "No items selected",
             empty_order: "Order is empty",
             tables: "Tables",
             menu_root: "Menu",
-            payment_method: "Payment Method"
+            payment_method: "Payment Method",
+            selected: "selected", each: "each",
+            add_note: "Add a note (e.g. no sugar)", add_more: "Add more"
         },
         payment: {
             cash: "Cash",
@@ -52,7 +57,10 @@ export const locales = {
             virman: "Transfer",
             house: "On House"
         },
-        bartender: { incoming: "Queue", all_done: "No pending orders", table_label: "Tbl {table}" },
+        bartender: { incoming: "Queue", all_done: "All caught up", table_label: "Tbl {table}", open_count: "{count} open", empty_sub: "New orders land here the moment a waiter sends them.", listening: "Listening for orders", served_today: "Served today: {count}" },
+        order_sent: { title: "Sent to the bar", back: "Back to tables", total: "Total" },
+        stock: { track: "Track stock", untrack: "Stop tracking", in_stock: "In stock", out_of_stock: "Out of stock" },
+        pricing: { title: "Scheduled pricing", none: "No pricing rules", rule: "Rule", add_rule: "Add rule", label_ph: "Rule name (e.g. Happy hour)", pct: "% off", abs: "Fixed €", delta: "± €", all_day: "All day", from: "From", to: "To", saved: "Rule saved" },
         reports: {
             title: "Shift Report",
             empty: "No orders yet this shift",
@@ -62,13 +70,14 @@ export const locales = {
             export_csv: "Export CSV", copied: "Copied to clipboard", exported: "CSV downloaded",
             close_shift: "Close shift", shift_closed: "New shift started", shift_since: "Since",
             clear_log: "Clear log", clear_confirm: "Permanently delete the entire order log?", log_cleared: "Order log cleared",
-            unknown_waiter: "Unknown", payment_unknown: "Unspecified"
+            unknown_waiter: "Unknown", payment_unknown: "Unspecified",
+            history: "Shift history", no_history: "No past shifts yet", avg_order: "Avg order", peak_hour: "Peak hour", heatmap: "Orders by hour"
         },
         actions: {
             save: "Save", connect: "Connect", copy_link: "Copy Link",
             send: "Send Order", clear: "Clear All", mark_done: "Complete",
             add: "Add", install: "Install App", remove: "Remove",
-            cancel: "Cancel", confirm: "Confirm", back: "Back", undo: "Undo"
+            cancel: "Cancel", confirm: "Confirm", back: "Back", undo: "Undo", paste: "Paste"
         },
         alerts: {
             order_sent: "Delivered", network_error: "Connection Lost",
@@ -131,13 +140,15 @@ export const locales = {
         }
     },
     hr: {
-        app: { tagline: "Kafić.hr", subline: "Usklađivanje narudžbi" },
+        app: { tagline: "Uskladi šank u trenu.", subline: "Narudžbe lete od stola do šanka u stvarnom vremenu — bez servera, posve offline." },
+        home: { hero_badge: "Bez servera · Radi offline", step1: "Pokreni kod", step2: "Ekipa se spaja", step3: "Počni posluživati" },
         settings: { title: "Postavke", theme: "Tema", lang: "Jezik", reset: "Izbriši podatke", handed: "Ruka", left: "Lijeva", right: "Desna" , on: "DA" , off: "NE" , solomode: "Solo način"},
         setup: {
             host: "Pokreni smjenu", join: "Pridruži se", resume: "Nastavi",
             join_title: "Prijava", lobby: "Povezivanje",
             label_name: "Naziv", select_role: "Radno mjesto",
             scan_hint: "Skeniraj QR", no_peers: "Povezivanje u tijeku...",
+            scan_caption: "Usmjeri na QR kod hosta", or_enter_code: "ili unesi kod",
             join_hint: "Unesi kod s glavnog uređaja.",
             connecting: "Uspostava veze...",
             resuming: "Vraćanje sesije...",
@@ -169,13 +180,16 @@ export const locales = {
             sync_tooltip: "Odaberite smjer dijeljenja. 'Šalji' dijeli vaš cjenik. 'Primaj' preuzima cjenik od hosta."
         },
         roles: { waiter: "Konobar", bartender: "Šank" },
+        lobby: { devices_connected: "{count} uređaja spojeno", qr_caption: "QR za brzi ulazak" },
         waiter: {
             select_table: "Odabir stola", table_short: "Stol",
             current_order: "Trenutni unos", empty: "Nema stavki",
             empty_order: "Prazna narudžba",
             tables: "Sala",
             menu_root: "Cjenik",
-            payment_method: "Način plaćanja"
+            payment_method: "Način plaćanja",
+            selected: "odabran", each: "po kom.",
+            add_note: "Dodaj napomenu (npr. bez šećera)", add_more: "Dodaj još"
         },
         payment: {
             cash: "Gotovina",
@@ -183,7 +197,10 @@ export const locales = {
             virman: "Virman",
             house: "Kuća"
         },
-        bartender: { incoming: "Nove narudžbe", all_done: "Sve isporučeno", table_label: "Stol {table}" },
+        bartender: { incoming: "Nove narudžbe", all_done: "Sve riješeno", table_label: "Stol {table}", open_count: "{count} otvoreno", empty_sub: "Nove narudžbe stižu čim ih konobar pošalje.", listening: "Osluškujem narudžbe", served_today: "Danas posluženo: {count}" },
+        order_sent: { title: "Poslano na šank", back: "Natrag na stolove", total: "Ukupno" },
+        stock: { track: "Prati zalihu", untrack: "Ne prati zalihu", in_stock: "Na zalihi", out_of_stock: "Nema na zalihi" },
+        pricing: { title: "Vremenske cijene", none: "Nema pravila", rule: "Pravilo", add_rule: "Dodaj pravilo", label_ph: "Naziv (npr. Happy hour)", pct: "% popusta", abs: "Fiksno €", delta: "± €", all_day: "Cijeli dan", from: "Od", to: "Do", saved: "Pravilo spremljeno" },
         reports: {
             title: "Izvještaj smjene",
             empty: "Još nema narudžbi u ovoj smjeni",
@@ -193,13 +210,14 @@ export const locales = {
             export_csv: "Izvoz CSV", copied: "Kopirano u međuspremnik", exported: "CSV preuzet",
             close_shift: "Zatvori smjenu", shift_closed: "Nova smjena započeta", shift_since: "Od",
             clear_log: "Obriši zapise", clear_confirm: "Trajno obrisati cijeli zapisnik narudžbi?", log_cleared: "Zapisnik obrisan",
-            unknown_waiter: "Nepoznato", payment_unknown: "Nedefinirano"
+            unknown_waiter: "Nepoznato", payment_unknown: "Nedefinirano",
+            history: "Povijest smjena", no_history: "Još nema prošlih smjena", avg_order: "Pros. račun", peak_hour: "Vršni sat", heatmap: "Narudžbe po satu"
         },
         actions: {
             save: "Spremi", connect: "Spoji se", copy_link: "Kopiraj",
             send: "Pošalji", clear: "Poništi", mark_done: "Gotovo",
             add: "Dodaj", install: "Instaliraj", remove: "Ukloni",
-            cancel: "Odustani", confirm: "Potvrdi", back: "Natrag", undo: "Poništi"
+            cancel: "Odustani", confirm: "Potvrdi", back: "Natrag", undo: "Poništi", paste: "Zalijepi"
         },
         alerts: {
             order_sent: "Isporučeno", network_error: "Veza prekinuta",

@@ -74,6 +74,64 @@ const csvField = (val) => {
     return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 };
 
+// --- Analytics (Phase 2, pure) ---
+
+// 24-slot array keyed by hour-of-day from each order's timestamp (drives the heatmap).
+export const byHour = (orders) => {
+    const slots = Array.from({ length: 24 }, (_, hour) => ({ hour, orders: 0, items: 0, revenue: 0 }));
+    for (const o of orders || []) {
+        if (!o.timestamp) continue;
+        const h = new Date(o.timestamp).getHours();
+        if (h < 0 || h > 23) continue;
+        const s = slots[h];
+        s.orders++;
+        for (const it of o.items || []) s.items += it.qty || 0;
+        s.revenue += o.orderTotal || 0;
+    }
+    slots.forEach(s => { s.revenue = round2(s.revenue); });
+    return slots;
+};
+
+// Top N best-selling items by qty (thin wrapper over salesByItem).
+export const bestSellers = (orders, n = 5) => salesByItem(orders).slice(0, Math.max(0, n));
+
+// Average order value (revenue / orderCount), guarded against /0.
+export const averageOrderValue = (orders) => {
+    const s = summary(orders);
+    return s.orderCount > 0 ? round2(s.revenue / s.orderCount) : 0;
+};
+
+// Map archived shift aggregates to a compact trend series (oldest -> newest).
+export const trendAcrossShifts = (shiftRecords) => {
+    return [...(shiftRecords || [])]
+        .sort((a, b) => (a.startTs || 0) - (b.startTs || 0))
+        .map(s => {
+            const sum = s.summary || {};
+            return {
+                shiftId: s.shiftId,
+                startTs: s.startTs,
+                endTs: s.endTs,
+                revenue: round2(sum.revenue || 0),
+                orderCount: sum.orderCount || 0,
+                aov: sum.orderCount ? round2((sum.revenue || 0) / sum.orderCount) : 0
+            };
+        });
+};
+
+// Frozen aggregate persisted at shift close (see db.saveShift). Snapshots all the
+// breakdowns + byHour so history survives even after the raw order log is cleared.
+export const buildShiftAggregate = (orders, meta = {}) => ({
+    shiftId: meta.shiftId,
+    startTs: meta.startTs || 0,
+    endTs: meta.endTs || 0,
+    closedBy: meta.closedBy || '',
+    summary: summary(orders),
+    byItem: salesByItem(orders),
+    byTable: byTable(orders),
+    byWaiter: byWaiter(orders),
+    byHour: byHour(orders)
+});
+
 // RFC-4180-ish, one row per line item. Raw numbers + ISO timestamps (spreadsheet-safe).
 export const toCsv = (orders) => {
     const header = ['orderId', 'timestamp', 'table', 'waiter', 'payment', 'item', 'qty', 'unitPrice', 'lineTotal'];
