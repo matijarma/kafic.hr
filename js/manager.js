@@ -4,6 +4,7 @@ import { t, getLanguage } from 'i18n';
 import { toast, confirm, icon } from 'ux';
 import { state } from 'state';
 import { summary, salesByItem, byTable, byWaiter, toCsv, byHour, averageOrderValue, buildShiftAggregate } from 'reports';
+import { renderQR } from 'qr';
 
 let container = null;
 let activePopover = null;
@@ -52,6 +53,7 @@ function render() {
             <div class="config-card" id="reports-section"></div>
             <div class="config-card" id="shift-history-section"></div>
             <div class="config-card" id="pricing-section"></div>
+            <div class="config-card" id="table-qr-section"></div>
 
             <div class="config-card compact-row" id="settingtoggles">
                 <div>
@@ -113,6 +115,7 @@ function render() {
     renderReports();
     renderHistory();
     renderPricing();
+    renderTableQRs();
 
     // Bindings
     const inpSlider = container.querySelector('#inp-table-count');
@@ -597,6 +600,46 @@ async function renderHistory() {
             renderHistory();
         };
     });
+}
+
+function renderTableQRs() {
+    const host = container && container.querySelector('#table-qr-section');
+    if (!host) return;
+    const code = state.sessionCode;
+    if (!code) {
+        host.innerHTML = `<div class="section-header"><label class="section-label">${t('manager.table_qrs')}</label></div><p class="reports-since">${t('setup.no_peers')}</p>`;
+        return;
+    }
+    host.innerHTML = `
+        <details class="reports-details">
+            <summary><label class="section-label">${t('manager.table_qrs')}</label></summary>
+            <div class="table-qr-actions"><button class="btn-ghost" id="btn-print-qrs">${t('manager.print_qrs')}</button></div>
+            <div class="table-qr-grid" id="table-qr-grid"></div>
+        </details>
+    `;
+    const det = host.querySelector('details');
+    const grid = host.querySelector('#table-qr-grid');
+    const renderGrid = () => {
+        if (grid.dataset.rendered) return;
+        grid.dataset.rendered = '1';
+        const base = location.origin + location.pathname;
+        for (let id = 1; id <= getTableCount(); id++) {
+            const card = document.createElement('div');
+            card.className = 'table-qr-card';
+            card.innerHTML = `<canvas></canvas><span>${t('bartender.table_label', { table: id })}</span>`;
+            grid.appendChild(card);
+            renderQR(card.querySelector('canvas'), `${base}?n=${code}&t=${id}&r=customer`, 130);
+        }
+    };
+    det.addEventListener('toggle', () => { if (det.open) renderGrid(); });
+    const printBtn = host.querySelector('#btn-print-qrs');
+    if (printBtn) printBtn.onclick = () => {
+        det.open = true;
+        renderGrid();
+        document.body.classList.add('printing-qrs');
+        window.print();
+        setTimeout(() => document.body.classList.remove('printing-qrs'), 800);
+    };
 }
 
 function flattenMenuOptions(menu) {

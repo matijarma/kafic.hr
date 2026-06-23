@@ -3,6 +3,7 @@ import { state, resetWaiterState } from 'state';
 import { generateJoinCode, roomIdFromCode, saveSession, loadSession, clearSavedSession, syncStateToSession } from 'session';
 import { initWaiter, refreshWaiter, onOrderCompleted, onOrderAck, rehydrateUncleared, canNavigateBack as canWaiterNavigateBack, navigateBack as navigateWaiterBack } from 'waiter';
 import { initBartender, onOrderReceived, setOrderCompletionHandler, rehydrateBarOrders } from 'bartender';
+import { initCustomer, refreshCustomerMenu } from 'customer';
 import { retryAll } from 'orders';
 import { clearScoped } from 'storage';
 import { initManager } from 'manager';
@@ -17,7 +18,8 @@ const views = {
     setup: document.getElementById('view-setup'),
     waiter: document.getElementById('view-waiter'),
     bartender: document.getElementById('view-bartender'),
-    manager: document.getElementById('view-manager')
+    manager: document.getElementById('view-manager'),
+    customer: document.getElementById('view-customer')
 };
 const slides = {
     home: document.getElementById('setup-home'),
@@ -743,9 +745,21 @@ function bootstrap() {
     
     // 7. URL Join
     const params = new URLSearchParams(window.location.search);
+    const entryRole = params.get('r');
     const joinCode = params.get('n') || params.get('join');
     const pathMatch = window.location.pathname.match(/\/n\/([A-Za-z0-9]{6})/i);
     const shortCode = pathMatch ? pathMatch[1] : '';
+    const code6 = (joinCode || shortCode || '').toUpperCase();
+
+    if (entryRole === 'customer' && /^[A-Z0-9]{6}$/.test(code6)) {
+        // Guest self-order: strip the URL and enter ephemeral customer mode.
+        const tbl = parseInt(params.get('t'), 10);
+        history.replaceState(history.state, '', window.location.pathname);
+        enterCustomerMode(code6, Number.isFinite(tbl) ? tbl : null);
+        armSystemBackGuard();
+        return;
+    }
+
     if (joinCode || shortCode) {
         if (joinCode) {
             params.delete('n');
@@ -1122,6 +1136,24 @@ function returnToLobby() {
     if (arrowRight) arrowRight.classList.remove('visible');
 }
 
+// Ephemeral guest self-order mode (no saved session; receives the menu as a slave peer).
+function enterCustomerMode(code, table) {
+    state.isCustomer = true;
+    state.role = 'customer';
+    state.customerTable = table;
+    state.customerCart = [];
+    state.sessionCode = code;
+    state.roomId = roomIdFromCode(code);
+    state.isHost = false;
+    state.syncMode = 'slave';
+    state.workerName = t('customer.guest');
+    goToView('customer');
+    initCustomer();
+    connectNetwork();
+    // If the host isn't actively pushing the menu, request it shortly after joining.
+    setTimeout(() => { try { broadcast({ type: 'menu-request' }); } catch (e) {} }, 1400);
+}
+
 function initSessionState(code, isHost) {
     state.peers = {};
     state.barOrders = [];
@@ -1255,6 +1287,12 @@ function routeMessage(data, peerId) {
         case 'sync-image':
         case 'sync-menu':
             handleSyncData(data);
+            break;
+        case 'menu-request':
+            // A (customer) peer asked for the menu — respond regardless of our sync mode.
+            if (state.isHost || state.soloMode || state.role === 'bartender') {
+                try { sendSyncData(peerId, true); } catch (e) {}
+            }
             break;
         case 'stock-update': {
             // A peer (host) decremented inventory — patch our local menu node + refresh.
@@ -1625,8 +1663,8 @@ function setSyncMode(mode, save = true) {
     updatePeerUI();
 }
 
-async function sendSyncData(targetId) {
-    if (state.syncMode !== 'host') return;
+async function sendSyncData(targetId, force = false) {
+    if (!force && state.syncMode !== 'host') return;
     
     // 1. Gather Images
     const menu = getMenu();
@@ -1734,6 +1772,7 @@ async function handleSyncData(data) {
         setTimeout(() => {
             saveMenu(data.menu);
             if (Array.isArray(data.rules)) savePriceRules(data.rules);
+            if (state.isCustomer) refreshCustomerMenu();
 
             logMsg(t('setup.sync_done'));
             toast(t('setup.sync_complete') || t('setup.sync_done'), 'success');

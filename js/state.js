@@ -11,7 +11,10 @@ export const state = {
     barOrders: [], // List of received orders
     unclearedTables: new Set(), // Set of tableIds that have pending orders
     soloMode: false, // New solo mode toggle
-    syncMode: 'nosync' // 'nosync' | 'slave' | 'host'
+    syncMode: 'nosync', // 'nosync' | 'slave' | 'host'
+    isCustomer: false, // ephemeral guest self-order peer
+    customerTable: null, // table id the guest is pinned to
+    customerCart: [] // guest's pending cart (separate from waiter currentOrder)
 };
 
 export const resetWaiterState = () => {
@@ -31,5 +34,8 @@ export const clearRuntimeState = () => {
     state.barOrders = [];
     state.unclearedTables = new Set();
     state.soloMode = false;
+    state.isCustomer = false;
+    state.customerTable = null;
+    state.customerCart = [];
     resetWaiterState();
 };

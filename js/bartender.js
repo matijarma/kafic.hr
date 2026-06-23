@@ -4,7 +4,7 @@ import { state } from 'state';
 import { broadcast, selfId } from 'network';
 import { readJSON, writeJSON, readSet, writeSet, scopedKey } from 'storage';
 import { saveOrder, getOrdersSince } from 'db';
-import { getMenu, saveMenu, ensureShiftStart, getShiftStart, getPriceRules } from 'data';
+import { getMenu, saveMenu, ensureShiftStart, getShiftStart, getPriceRules, getTableCount } from 'data';
 import { buildEffectivePriceMap } from 'pricing';
 
 const feed = document.getElementById('bartender-feed');
@@ -128,6 +128,17 @@ export const onOrderReceived = (data, opts = {}) => {
         const isBar = state.role === 'bartender' || state.soloMode;
         if (!isBar) return;
 
+        // Security: drop malformed/abusive guest orders (out-of-range table or unknown items).
+        if (data.origin === 'customer') {
+            const maxT = getTableCount();
+            const tid = Number(data.tableId);
+            if (!Number.isInteger(tid) || tid < 1 || tid > maxT) return;
+            const ids = new Set();
+            const walk = (nodes) => (nodes || []).forEach(n => { if (n.children) walk(n.children); else if (n.id != null) ids.add(n.id); });
+            walk(getMenu());
+            if (!(data.items || []).length || !(data.items || []).every(it => ids.has(it.id))) return;
+        }
+
         // Acknowledge receipt so the waiter's pending order flips to "delivered".
         // Re-ack duplicates too (cheap, helps a retrying waiter), but don't re-render them.
         broadcast({
@@ -239,13 +250,15 @@ const addOrderToCard = (card, data) => {
     }).join('');
 
     const orderEl = document.createElement('div');
-    orderEl.className = 'feed-order ' + computeAgeClass(data.timestamp);
+    orderEl.className = 'feed-order ' + computeAgeClass(data.timestamp) + (data.origin === 'customer' ? ' customer' : '');
     orderEl.dataset.orderId = data.orderId;
+    const guestBadge = data.origin === 'customer' ? `<span class="guest-badge">${icon('cup')} ${t('customer.guest')}</span>` : '';
     orderEl.innerHTML = `
         <div class="feed-order-header">
             <div class="feed-meta">
                 <span class="feed-order-time">${time}</span>
                 ${payIcon}
+                ${guestBadge}
             </div>
         </div>
         <div class="feed-order-items">

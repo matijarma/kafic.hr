@@ -75,6 +75,7 @@
                     orders: `./js/orders.js${suffix}`,
                     reports: `./js/reports.js${suffix}`,
                     pricing: `./js/pricing.js${suffix}`,
+                    customer: `./js/customer.js${suffix}`,
                     trystero: `./js/trystero.min.js${suffix}`
                 }
             };
@@ -490,6 +491,31 @@
         <!-- VIEW 4: MANAGER -->
         <section id="view-manager" class="view">
             <!-- Content injected by manager.js -->
+        </section>
+
+        <!-- VIEW 5: CUSTOMER (guest self-order) -->
+        <section id="view-customer" class="view">
+            <div class="customer-shell">
+                <header class="customer-header">
+                    <span class="wordmark-tile"><svg class="ic" aria-hidden="true"><use href="#ic-cup"></use></svg></span>
+                    <span class="customer-table-chip" id="customer-table-chip">—</span>
+                    <span class="net-indicator" id="customer-net-pill"><span class="dot"></span><span class="label"></span></span>
+                    <button id="customer-lang" class="icon-btn small" aria-label="Language"></button>
+                </header>
+                <div class="customer-breadcrumbs" id="customer-breadcrumbs"></div>
+                <div id="customer-menu" class="customer-menu"></div>
+                <div id="customer-cart" class="customer-cart hidden">
+                    <div class="cc-summary">
+                        <span class="badge" id="customer-cart-count">0</span>
+                        <span data-i18n="customer.your_order">Your order</span>
+                    </div>
+                    <div id="customer-cart-items" class="cc-items"></div>
+                    <button id="customer-place" class="btn-primary full-width large" disabled>
+                        <span class="send-label" data-i18n="customer.place_order">Place order</span>
+                        <span class="send-total" id="customer-total"></span>
+                    </button>
+                </div>
+            </div>
         </section>
 
     </div>

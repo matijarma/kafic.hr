@@ -61,6 +61,7 @@ export const locales = {
         order_sent: { title: "Sent to the bar", back: "Back to tables", total: "Total" },
         stock: { track: "Track stock", untrack: "Stop tracking", in_stock: "In stock", out_of_stock: "Out of stock" },
         pricing: { title: "Scheduled pricing", none: "No pricing rules", rule: "Rule", add_rule: "Add rule", label_ph: "Rule name (e.g. Happy hour)", pct: "% off", abs: "Fixed €", delta: "± €", all_day: "All day", from: "From", to: "To", saved: "Rule saved" },
+        customer: { guest: "Guest", your_order: "Your order", place_order: "Place order", loading: "Loading menu…", retry: "Reload menu", connecting: "Connecting…", offline: "Café is offline — please order with staff" },
         reports: {
             title: "Shift Report",
             empty: "No orders yet this shift",
@@ -120,7 +121,8 @@ export const locales = {
             delete_item: "Delete Item",
             favorite: "Favorite",
             max_favs: "Max 5 favorites allowed",
-            missing_label: "Name required"
+            missing_label: "Name required",
+            table_qrs: "Table QR codes", print_qrs: "Print"
         },
         welcome: {
             title: "Quick Start",
@@ -201,6 +203,7 @@ export const locales = {
         order_sent: { title: "Poslano na šank", back: "Natrag na stolove", total: "Ukupno" },
         stock: { track: "Prati zalihu", untrack: "Ne prati zalihu", in_stock: "Na zalihi", out_of_stock: "Nema na zalihi" },
         pricing: { title: "Vremenske cijene", none: "Nema pravila", rule: "Pravilo", add_rule: "Dodaj pravilo", label_ph: "Naziv (npr. Happy hour)", pct: "% popusta", abs: "Fiksno €", delta: "± €", all_day: "Cijeli dan", from: "Od", to: "Do", saved: "Pravilo spremljeno" },
+        customer: { guest: "Gost", your_order: "Vaša narudžba", place_order: "Naruči", loading: "Učitavanje cjenika…", retry: "Osvježi cjenik", connecting: "Povezivanje…", offline: "Lokal je offline — naručite kod osoblja" },
         reports: {
             title: "Izvještaj smjene",
             empty: "Još nema narudžbi u ovoj smjeni",
@@ -260,7 +263,8 @@ export const locales = {
             delete_item: "Obriši stavku",
             favorite: "Favorit",
             max_favs: "Maksimalno 5 favorita",
-            missing_label: "Nedostaje naziv"
+            missing_label: "Nedostaje naziv",
+            table_qrs: "QR kodovi stolova", print_qrs: "Ispiši"
         },
         welcome: {
             title: "Upute",
