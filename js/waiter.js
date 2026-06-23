@@ -372,6 +372,10 @@ const applyGridLayout = (count) => {
     const availableWidth = rect.width - paddingX;
     const availableHeight = rect.height - paddingY;
 
+    const MIN = 72;   // comfortable tap target — never shrink below this
+    const MAX = 168;
+
+    // Best square that fits ALL tiles in both dimensions (big tiles when few).
     let best = { cols: 1, rows: count, size: 0 };
     for (let cols = 1; cols <= count; cols++) {
         const rows = Math.ceil(count / cols);
@@ -384,11 +388,20 @@ const applyGridLayout = (count) => {
         }
     }
 
-    if (best.size <= 0) return;
-    const maxCellSize = 180;
-    const finalSize = Math.min(best.size, maxCellSize);
-    grid.style.gridTemplateColumns = `repeat(${best.cols}, ${finalSize}px)`;
-    grid.style.gridAutoRows = `${finalSize}px`;
+    let cols, size;
+    if (best.size >= MIN) {
+        // Fits comfortably: use the big-tiles layout, no scroll.
+        cols = best.cols;
+        size = Math.min(best.size, MAX);
+        grid.style.overflowY = 'hidden';
+    } else {
+        // Would be cramped: size by width to a readable tile and scroll vertically.
+        cols = Math.max(1, Math.min(count, Math.floor((availableWidth + colGap) / (MIN + colGap))));
+        size = Math.max(MIN, Math.min(MAX, Math.floor((availableWidth - colGap * (cols - 1)) / cols)));
+        grid.style.overflowY = 'auto';
+    }
+    grid.style.gridTemplateColumns = `repeat(${cols}, ${size}px)`;
+    grid.style.gridAutoRows = `${size}px`;
 };
 
 const buildQtyGrid = () => {

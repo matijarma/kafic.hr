@@ -51,44 +51,8 @@ function render() {
 
     container.innerHTML = `
         <div class="manager-container">
-            <div class="config-card" id="reports-section"></div>
-            <div class="config-card" id="shift-history-section"></div>
-            <div class="config-card" id="pricing-section"></div>
-            <div class="config-card" id="table-qr-section"></div>
-            <div class="config-card" id="backup-section"></div>
-
-            <div class="config-card compact-row" id="settingtoggles">
-                <div>
-                    <!-- Solo Mode Toggle -->
-                    
-                    <div class="control-group shrink">
-                        <label class="section-label" data-i18n="settings.solomode">Solo Mode</label>
-                        <label class="fancy-switch" aria-label="Solo Mode">
-                            <input type="checkbox" id="tog-solo">
-                            <span class="switch-track">
-                                <span class="switch-icon left" data-i18n="settings.on">${icon('check-circle')}</span>
-                                <span class="switch-icon right">${icon('power-off')}</span>
-                                <span class="switch-thumb"></span>
-                            </span>
-                        </label>
-                    </div>
-                
-                    <div class="v-sep"></div>
-
-                    <!-- Hand Toggle -->
-                    <div class="control-group shrink">
-                        <label class="section-label">${t('settings.handed')}</label>
-                        <label class="fancy-switch" aria-label="${t('settings.handed')}">
-                            <input type="checkbox" id="tog-hand">
-                            <span class="switch-track">
-                                <span class="switch-icon left" data-i18n="setup.lijevo">L</span>
-                                <span class="switch-icon right" data-i18n="setup.desno">D</span>
-                                <span class="switch-thumb"></span>
-                            </span>
-                        </label>
-                    </div>
-                </div>
-                <!-- Table Count -->
+            <!-- Core config first -->
+            <div class="config-card" id="settingtoggles">
                 <div class="control-group grow">
                     <div class="slider-header">
                         <label class="section-label">${t('manager.table_count')}</label>
@@ -96,20 +60,50 @@ function render() {
                     </div>
                     <input type="range" id="inp-table-count" min="10" max="48" step="1" value="${currentCount}">
                 </div>
+                <div class="setting-row">
+                    <label class="section-label" data-i18n="settings.solomode">Solo Mode</label>
+                    <label class="fancy-switch" aria-label="Solo Mode">
+                        <input type="checkbox" id="tog-solo">
+                        <span class="switch-track">
+                            <span class="switch-icon left" data-i18n="settings.on">${icon('check-circle')}</span>
+                            <span class="switch-icon right">${icon('power-off')}</span>
+                            <span class="switch-thumb"></span>
+                        </span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <label class="section-label">${t('settings.handed')}</label>
+                    <label class="fancy-switch" aria-label="${t('settings.handed')}">
+                        <input type="checkbox" id="tog-hand">
+                        <span class="switch-track">
+                            <span class="switch-icon left" data-i18n="setup.lijevo">L</span>
+                            <span class="switch-icon right" data-i18n="setup.desno">D</span>
+                            <span class="switch-thumb"></span>
+                        </span>
+                    </label>
+                </div>
             </div>
 
-            <div class="config-card flex-fill">
-                
+            <!-- Menu editor -->
+            <div class="config-card">
                 <div class="section-header">
                     <label class="section-label">${t('manager.menu_structure')}</label>
                 </div>
                 <div class="tree-editor" id="menu-tree"></div>
-                
                 <button class="btn-ghost full-width" id="btn-add-root">
                     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                     ${t('manager.add_item')}
                 </button>
             </div>
+
+            <!-- Optional config -->
+            <div class="config-card" id="pricing-section"></div>
+            <div class="config-card" id="table-qr-section"></div>
+            <div class="config-card" id="backup-section"></div>
+
+            <!-- Analytics last, collapsed by default -->
+            <details class="config-card analytics-card" id="reports-section"></details>
+            <details class="config-card analytics-card" id="shift-history-section"></details>
         </div>
     `;
 
@@ -320,15 +314,19 @@ function renderTree(containerEl, items, depth = 0) {
                 </button>
             `;
             
-            // Positioning logic
-            const rect = menuBtn.getBoundingClientRect();
-            pop.style.top = `${rect.bottom + 4}px`;
-            // Align right edge
-            const left = Math.max(10, rect.right - 180);
-            pop.style.left = `${left}px`;
-            
             document.body.appendChild(pop);
             activePopover = pop;
+
+            // Positioning — clamp into the viewport (flip up / shift left if it would overflow)
+            const rect = menuBtn.getBoundingClientRect();
+            const pw = pop.offsetWidth || 180;
+            const ph = pop.offsetHeight || 200;
+            let top = rect.bottom + 4;
+            if (top + ph > window.innerHeight - 8) top = Math.max(8, rect.top - ph - 4);
+            let left = Math.max(8, rect.right - pw);
+            left = Math.min(left, window.innerWidth - pw - 8);
+            pop.style.top = `${top}px`;
+            pop.style.left = `${left}px`;
             
             // Menu Actions
             const fileInput = document.createElement('input');
@@ -448,7 +446,7 @@ async function renderReports() {
 
     if (!orders.length) {
         host.innerHTML = `
-            <div class="section-header"><label class="section-label">${t('reports.title')}</label></div>
+            <summary class="section-label analytics-summary">${t('reports.title')}</summary>
             <div class="empty-state"><div class="icon">✓</div><p>${t('reports.empty')}</p></div>
             ${total > 0 ? `<div class="reports-actions"><button class="btn-ghost danger-text" id="btn-clear-log">${t('reports.clear_log')}</button></div>` : ''}
         `;
@@ -476,10 +474,7 @@ async function renderReports() {
     const waiterRows = rows(byWaiter(orders), w => `<td>${escHtml(w.name || t('reports.unknown_waiter'))}</td><td class="num">${w.orders}</td><td class="num">${fmtMoney(w.revenue)}</td>`);
 
     host.innerHTML = `
-        <div class="section-header">
-            <label class="section-label">${t('reports.title')}</label>
-            <span class="reports-since">${t('reports.shift_since')} ${escHtml(sinceStr)}</span>
-        </div>
+        <summary class="section-label analytics-summary">${t('reports.title')} <span class="reports-since">${t('reports.shift_since')} ${escHtml(sinceStr)}</span></summary>
         <div class="reports-kpis">
             <div class="kpi"><span class="kpi-val">${sum.orderCount}</span><span class="kpi-label">${t('reports.orders')}</span></div>
             <div class="kpi"><span class="kpi-val">${sum.itemCount}</span><span class="kpi-label">${t('reports.items')}</span></div>
@@ -570,7 +565,7 @@ async function renderHistory() {
     try { shifts = await getRecentShifts(30); } catch (e) { console.warn('[history] load failed', e); }
 
     if (!shifts.length) {
-        host.innerHTML = `<div class="section-header"><label class="section-label">${t('reports.history')}</label></div>
+        host.innerHTML = `<summary class="section-label analytics-summary">${t('reports.history')}</summary>
             <p class="reports-since">${t('reports.no_history')}</p>`;
         return;
     }
@@ -596,7 +591,7 @@ async function renderHistory() {
         </details>`;
     }).join('');
 
-    host.innerHTML = `<div class="section-header"><label class="section-label">${t('reports.history')}</label></div>${cards}`;
+    host.innerHTML = `<summary class="section-label analytics-summary">${t('reports.history')}</summary>${cards}`;
     host.querySelectorAll('[data-del-shift]').forEach(btn => {
         btn.onclick = async () => {
             try { await deleteShift(btn.getAttribute('data-del-shift')); } catch (e) {}

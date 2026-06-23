@@ -836,7 +836,6 @@ function setupEvents() {
 
     if (btnOpenHelp) {
         btnOpenHelp.onclick = () => {
-            closeHeaderTools();
             openHelpModal();
         };
     }

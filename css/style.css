@@ -82,6 +82,13 @@
 
 html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 
+/* Subtle, on-brand scrollbars (replaces ugly browser-default chrome on every internal scroller) */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+::-webkit-scrollbar-track { background: transparent; }
+
 body {
     font-family: var(--font-sans);
     background: var(--bg-gradient);
@@ -316,6 +323,8 @@ button:focus-visible, input:focus-visible {
     white-space: nowrap;
 }
 .wordmark-text .hr { color: var(--accent); }
+/* Very narrow phones: keep the tile, drop the wordmark text so the name field + tools fit */
+@media (max-width: 374px) { .wordmark-text { display: none; } }
 
 .app-header {
     height: var(--header-height);
@@ -779,17 +788,16 @@ body:not([data-view="waiter"]) .not-waiter { display: inline-flex !important; }
 /* --- WAITER --- */
 .grid-layout {
     display: grid;
-    gap: 14px !important;
+    gap: 12px;
     padding: 8px;
     padding-bottom: calc(8px + var(--grid-reserve, 0px));
     width: 100%;
     flex: 1;
     min-height: 0;
     height: auto;
-    align-content: center;
+    align-content: start;
     justify-content: center;
     overflow: hidden;
-    padding-bottom: 6vh !important;
 }
 .grid-layout.has-back { --grid-reserve: 56px; }
 
@@ -1185,6 +1193,8 @@ body[data-hand="left"] .qty-body { flex-direction: row; }
     flex-direction: column;
     gap: 16px;
     min-width: 0;
+    min-height: 0;
+    overflow-y: auto;   /* short screens: keep the Add button reachable */
 }
 
 .qty-step {
@@ -1602,6 +1612,9 @@ body[data-hand="left"] .qty-footer {
     flex-direction: column;
     gap: 16px;
     padding: 10px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    overflow-y: auto;            /* the WHOLE settings page scrolls — one scroll region */
+    -webkit-overflow-scrolling: touch;
 }
 
 .manager-header {
@@ -1630,6 +1643,40 @@ body[data-hand="left"] .qty-footer {
     justify-content: center;
 }
 .config-card.flex-fill { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+
+/* Settings: clean vertical config rows (was a cramped single row) */
+#settingtoggles { gap: 16px; justify-content: flex-start; }
+#settingtoggles .control-group { align-items: stretch; width: 100%; gap: 8px; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.setting-row .section-label { margin: 0; }
+
+/* Collapsible analytics cards (Reports / Shift history) */
+.analytics-card { gap: 0; justify-content: flex-start; }
+.analytics-card > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.analytics-card > summary::-webkit-details-marker { display: none; }
+.analytics-card > summary::after {
+    content: "";
+    width: 9px; height: 9px;
+    border-right: 2px solid var(--text-muted);
+    border-bottom: 2px solid var(--text-muted);
+    transform: rotate(45deg);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+.analytics-card[open] > summary { margin-bottom: 12px; }
+.analytics-card[open] > summary::after { transform: rotate(225deg); }
+.analytics-summary .reports-since { font-weight: 600; font-size: 0.72rem; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+
+/* Overflow polish (no horizontal overflow on narrow phones) */
+.table-qr-card { max-width: 100%; }
+.rule-input { max-width: 100%; }
 
 .section-label {
     font-size: 0.75rem;
@@ -1867,11 +1914,11 @@ input[type=range]::-moz-range-track {
 
 /* --- MENU TREE (Strict Grid) --- */
 .tree-editor {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-bottom: 60px; /* Space for popover */
-    padding-right: 4px;
+    /* No longer its own scroll region — the menu tree lays out inline and the
+       whole .manager-container scrolls as one page. */
+    overflow: visible;
+    padding-bottom: 8px;
+    padding-right: 2px;
 }
 
 .node {
@@ -3012,10 +3059,11 @@ video { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
     .feed-order-done { transition: background 0.15s ease; }
 
     /* 5. Manager View - Center Column */
+    #view-manager { overflow: hidden; }   /* .manager-container is the sole scroller */
     .manager-container {
         max-width: 900px;
         gap: 24px;
-        padding: 0;
+        padding: 0 0 24px;
     }
     
     .config-card {
