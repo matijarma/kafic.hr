@@ -246,6 +246,7 @@ export const rehydrateUncleared = () => {
     state.unclearedTables = readSet(unclearedKey());
 };
 
+const STALE_ATTEMPTS = 6; // after ~6 retries with no ack, surface a manual resend
 const renderPendingStrip = () => {
     if (!pendingStrip) return;
     const entries = getPending();
@@ -257,14 +258,24 @@ const renderPendingStrip = () => {
     pendingStrip.classList.remove('hidden');
     pendingStrip.innerHTML = entries.map(e => {
         const acked = e.status === 'acked';
+        const stale = !acked && (e.attempts || 0) >= STALE_ATTEMPTS;
         const label = t('bartender.table_label', { table: e.order.tableId });
-        const statusText = acked ? t('alerts.order_sent') : t('alerts.order_pending_label');
-        const statusIcon = acked ? icon('check-circle') : icon('sync', 'spin');
-        return `<div class="pending-row ${acked ? 'acked' : 'pending'}">
+        const statusText = acked ? t('alerts.order_sent') : (stale ? t('alerts.order_stale') : t('alerts.order_pending_label'));
+        const statusIcon = acked ? icon('check-circle') : (stale ? icon('exchange-alt') : icon('sync', 'spin'));
+        const resend = stale ? `<button class="pending-resend" data-resend="${e.order.orderId}">${t('actions.resend')}</button>` : '';
+        return `<div class="pending-row ${acked ? 'acked' : (stale ? 'stale' : 'pending')}">
             <span class="pending-table">${label}</span>
             <span class="pending-status">${statusIcon} ${statusText}</span>
+            ${resend}
         </div>`;
     }).join('');
+    pendingStrip.querySelectorAll('[data-resend]').forEach(btn => {
+        btn.onclick = () => {
+            const id = btn.getAttribute('data-resend');
+            const entry = getPending().find(e => e.order.orderId === id && e.status === 'pending');
+            if (entry) { try { broadcast(entry.order); } catch (e) {} toast(t('alerts.order_sending'), 'info'); }
+        };
+    });
 };
 
 // Called from app.js routing when a bartender acknowledges an order.

@@ -1486,6 +1486,9 @@ body[data-hand="left"] .qty-footer {
     text-overflow: ellipsis;
 }
 .feed-item-name .qty { font-weight: 700; margin-right: 0; color: var(--accent-strong); }
+.feed-item { cursor: pointer; }
+.feed-item.done { opacity: 0.5; }
+.feed-item.done .label-text { text-decoration: line-through; }
 .pay-icon-large {
     font-size: 1.2rem;
     color: var(--accent);
@@ -2072,6 +2075,8 @@ body[data-view="customer"] #app-footer { display: none; }
 
 /* Guest badge on bartender customer orders */
 .guest-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent-strong); background: var(--accent-soft); padding: 2px 8px; border-radius: 999px; }
+.claim-badge { display: inline-flex; align-items: center; font-size: 0.7rem; font-weight: 700; color: var(--warning); background: color-mix(in srgb, var(--warning) 14%, transparent); padding: 2px 8px; border-radius: 999px; }
+.feed-order.claimed-by-other { opacity: 0.92; }
 
 /* Manager table-QR grid */
 .table-qr-actions { margin: 6px 0; }
@@ -2079,6 +2084,32 @@ body[data-view="customer"] #app-footer { display: none; }
 .table-qr-card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px; background: #fff; border: 1px solid var(--border-strong); border-radius: var(--radius-md); }
 .table-qr-card canvas { width: 100% !important; height: auto !important; max-width: 130px; image-rendering: pixelated; }
 .table-qr-card span { font-weight: 700; font-size: 0.85rem; color: #17120d; }
+.backup-opt { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; }
+.backup-opt input { width: 18px; height: 18px; }
+
+/* Receipt printing */
+.receipt-print { display: none; }
+.feed-icon-btn {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 8px; border: 1px solid var(--border-strong);
+    background: var(--bg-surface-1); color: var(--text-muted);
+    display: inline-flex; align-items: center; justify-content: center;
+}
+@media print {
+    body.printing-receipt * { visibility: hidden; }
+    body.printing-receipt #print-receipt-host, body.printing-receipt #print-receipt-host * { visibility: visible; }
+    body.printing-receipt #print-receipt-host { position: absolute; left: 0; top: 0; width: 100%; }
+    .receipt-print { display: block; width: 76mm; margin: 0 auto; font-family: var(--font-mono); color: #000; padding: 6mm 4mm; }
+    .receipt-print h2 { text-align: center; margin: 0 0 4px; font-family: var(--font-display); }
+    .receipt-print .rp-table { font-weight: 700; }
+    .receipt-print .rp-time { font-size: 11px; margin-bottom: 8px; }
+    .receipt-print .rp-items { width: 100%; border-collapse: collapse; }
+    .receipt-print .rp-items td { padding: 2px 0; vertical-align: top; font-size: 12px; }
+    .receipt-print .rp-items td.q { white-space: nowrap; padding-right: 6px; }
+    .receipt-print .rp-items td.p { text-align: right; white-space: nowrap; }
+    .receipt-print .rp-items td.note { font-style: italic; font-size: 11px; }
+    .receipt-print .rp-total { display: flex; justify-content: space-between; border-top: 1px dashed #000; margin-top: 8px; padding-top: 6px; font-weight: 700; }
+}
 
 @media print {
     body.printing-qrs * { visibility: hidden; }
@@ -2251,6 +2282,9 @@ body[data-view="customer"] #app-footer { display: none; }
 .pending-row.pending .pending-status { color: var(--text-muted); }
 .pending-row.acked { background: rgba(47, 181, 115, 0.12); border-color: rgba(47, 181, 115, 0.3); }
 .pending-row.acked .pending-status { color: var(--success); }
+.pending-row.stale { background: color-mix(in srgb, var(--warning) 12%, transparent); border-color: color-mix(in srgb, var(--warning) 40%, transparent); }
+.pending-row.stale .pending-status { color: var(--warning); }
+.pending-resend { margin-left: auto; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--warning); background: transparent; color: var(--warning); font-weight: 700; font-size: 0.78rem; }
 
 /* --- Reports (Manager) --- */
 .reports-since { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }

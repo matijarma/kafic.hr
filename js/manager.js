@@ -5,6 +5,7 @@ import { toast, confirm, icon } from 'ux';
 import { state } from 'state';
 import { summary, salesByItem, byTable, byWaiter, toCsv, byHour, averageOrderValue, buildShiftAggregate } from 'reports';
 import { renderQR } from 'qr';
+import { exportBackup, importBackup } from 'backup';
 
 let container = null;
 let activePopover = null;
@@ -54,6 +55,7 @@ function render() {
             <div class="config-card" id="shift-history-section"></div>
             <div class="config-card" id="pricing-section"></div>
             <div class="config-card" id="table-qr-section"></div>
+            <div class="config-card" id="backup-section"></div>
 
             <div class="config-card compact-row" id="settingtoggles">
                 <div>
@@ -116,6 +118,7 @@ function render() {
     renderHistory();
     renderPricing();
     renderTableQRs();
+    renderBackup();
 
     // Bindings
     const inpSlider = container.querySelector('#inp-table-count');
@@ -600,6 +603,31 @@ async function renderHistory() {
             renderHistory();
         };
     });
+}
+
+function renderBackup() {
+    const host = container && container.querySelector('#backup-section');
+    if (!host) return;
+    host.innerHTML = `
+        <div class="section-header"><label class="section-label">${t('backup.title')}</label></div>
+        <label class="backup-opt"><input type="checkbox" id="bk-orders"> ${t('backup.include_orders')}</label>
+        <div class="reports-actions">
+            <button class="btn-ghost" id="bk-export">${t('backup.export')}</button>
+            <button class="btn-ghost" id="bk-import">${t('backup.import')}</button>
+        </div>
+        <input type="file" id="bk-file" accept="application/json" class="hidden">
+    `;
+    host.querySelector('#bk-export').onclick = () => exportBackup({ includeOrders: host.querySelector('#bk-orders').checked });
+    const file = host.querySelector('#bk-file');
+    host.querySelector('#bk-import').onclick = () => file.click();
+    file.onchange = async () => {
+        if (!file.files[0]) return;
+        if (await confirm(t('backup.replace_confirm'))) {
+            const ok = await importBackup(file.files[0], { strategy: 'replace' });
+            if (ok) { toast(t('backup.restored'), 'success'); setTimeout(() => location.reload(), 700); }
+        }
+        file.value = '';
+    };
 }
 
 function renderTableQRs() {

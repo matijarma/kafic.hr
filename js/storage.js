@@ -42,7 +42,8 @@ const SCOPED_BASES = [
     'kafic_pending_orders', // waiter: unacked outbound queue
     'kafic_bar_orders',     // bartender: received orders
     'kafic_uncleared',      // waiter: table indicators
-    'kafic_seen_orderids'   // bartender: dedup set
+    'kafic_seen_orderids',  // bartender: dedup set
+    'kafic_claims'          // bartender: multi-bartender claim map
 ];
 
 export const clearScoped = (code) => {

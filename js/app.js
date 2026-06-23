@@ -2,7 +2,7 @@ import { initNetwork, broadcast, selfId } from 'network';
 import { state, resetWaiterState } from 'state';
 import { generateJoinCode, roomIdFromCode, saveSession, loadSession, clearSavedSession, syncStateToSession } from 'session';
 import { initWaiter, refreshWaiter, onOrderCompleted, onOrderAck, rehydrateUncleared, canNavigateBack as canWaiterNavigateBack, navigateBack as navigateWaiterBack } from 'waiter';
-import { initBartender, onOrderReceived, setOrderCompletionHandler, rehydrateBarOrders } from 'bartender';
+import { initBartender, onOrderReceived, setOrderCompletionHandler, rehydrateBarOrders, onItemDone, onClaim } from 'bartender';
 import { initCustomer, refreshCustomerMenu } from 'customer';
 import { retryAll } from 'orders';
 import { clearScoped } from 'storage';
@@ -1288,6 +1288,12 @@ function routeMessage(data, peerId) {
         case 'sync-menu':
             handleSyncData(data);
             break;
+        case 'item-done':
+            if (state.role === 'bartender' || state.soloMode) onItemDone(data);
+            break;
+        case 'order-claim':
+            if (state.role === 'bartender' || state.soloMode) onClaim(data);
+            break;
         case 'menu-request':
             // A (customer) peer asked for the menu — respond regardless of our sync mode.
             if (state.isHost || state.soloMode || state.role === 'bartender') {
@@ -1317,9 +1323,11 @@ function announceSelf(targetId) {
     }, targetId);
 }
 
+let everHadPeers = false;
 function updatePeerUI() {
     const count = Object.keys(state.peers).length;
     const online = navigator.onLine;
+    if (count > 0) everHadPeers = true;
     renderLobbyAvatars();
     
     headerConns.forEach(headerConn => {
@@ -1341,8 +1349,10 @@ function updatePeerUI() {
             // No peers
             if (state.sessionCode && hasNetwork) {
                 headerConn.classList.add('connecting');
-                // In session and network active -> Waiting/Looking
-                if (state.isHost) {
+                // In session and network active -> Waiting/Looking/Reconnecting
+                if (everHadPeers) {
+                    if (countLabel) countLabel.textContent = t('setup.conn_reconnecting');
+                } else if (state.isHost) {
                      if (countLabel) countLabel.textContent = t('setup.conn_hosting');
                 } else {
                      if (countLabel) countLabel.textContent = t('setup.conn_joining');

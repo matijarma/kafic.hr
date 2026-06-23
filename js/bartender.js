@@ -6,6 +6,8 @@ import { readJSON, writeJSON, readSet, writeSet, scopedKey } from 'storage';
 import { saveOrder, getOrdersSince } from 'db';
 import { getMenu, saveMenu, ensureShiftStart, getShiftStart, getPriceRules, getTableCount } from 'data';
 import { buildEffectivePriceMap } from 'pricing';
+import { printReceipt } from 'printing';
+import { applyClaim, ownerOf } from 'claims';
 
 const feed = document.getElementById('bartender-feed');
 const openPill = document.getElementById('feed-open-pill');
@@ -25,6 +27,48 @@ const persistBarOrders = () => writeJSON(barOrdersKey(), state.barOrders);
 const removeBarOrder = (orderId) => {
     const i = state.barOrders.findIndex(o => o && o.orderId === orderId);
     if (i >= 0) { state.barOrders.splice(i, 1); persistBarOrders(); }
+};
+
+// --- Multi-bartender claim (advisory: shows who's making an order; never gates completion) ---
+const claimsKey = () => scopedKey('kafic_claims', state.sessionCode);
+let claims = {};
+const loadClaims = () => { claims = readJSON(claimsKey(), {}) || {}; };
+const persistClaims = () => writeJSON(claimsKey(), claims);
+
+const renderClaimBadge = (orderEl, orderId) => {
+    if (!orderEl) return;
+    const o = ownerOf(claims, orderId);
+    let badge = orderEl.querySelector('.claim-badge');
+    if (o && o.byId !== selfId) {
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'claim-badge';
+            const meta = orderEl.querySelector('.feed-meta');
+            if (meta) meta.appendChild(badge);
+        }
+        badge.textContent = t('bartender.claimed_by', { name: o.byName || '—' });
+        orderEl.classList.add('claimed-by-other');
+    } else {
+        if (badge) badge.remove();
+        orderEl.classList.remove('claimed-by-other');
+    }
+};
+
+const claimOrder = (orderId) => {
+    const claim = { orderId, byId: selfId, byName: state.workerName || '', at: Date.now() };
+    claims = applyClaim(claims, claim);
+    persistClaims();
+    try { broadcast({ type: 'order-claim', ...claim }); } catch (e) {}
+    const reg = orderRegistry.get(orderId);
+    if (reg) renderClaimBadge(reg.orderEl, orderId);
+};
+
+// Claim received from another bartender device.
+export const onClaim = (data) => {
+    claims = applyClaim(claims, data);
+    persistClaims();
+    const reg = orderRegistry.get(data.orderId);
+    if (reg) renderClaimBadge(reg.orderEl, data.orderId);
 };
 
 // Build an id -> price lookup from the host's own menu (waiters never send price),
@@ -105,6 +149,7 @@ const refreshAges = () => {
 };
 
 export const initBartender = () => {
+    loadClaims();
     render();
     if (ageTick) clearInterval(ageTick);
     ageTick = setInterval(refreshAges, AGE_TICK_MS);
@@ -112,6 +157,19 @@ export const initBartender = () => {
 
 export const setOrderCompletionHandler = (fn) => {
     onComplete = fn;
+};
+
+// Apply a per-item "done" toggle received from another bartender device.
+export const onItemDone = (data) => {
+    const reg = orderRegistry.get(data.orderId);
+    if (!reg) return;
+    const el = reg.orderEl.querySelector(`.feed-item[data-item-idx="${data.itemIdx}"]`);
+    if (el) el.classList.toggle('done', !!data.done);
+    reg.data.doneItems = reg.data.doneItems || [];
+    const at = reg.data.doneItems.indexOf(data.itemIdx);
+    if (data.done && at < 0) reg.data.doneItems.push(data.itemIdx);
+    if (!data.done && at >= 0) reg.data.doneItems.splice(at, 1);
+    persistBarOrders();
 };
 
 export const onOrderReceived = (data, opts = {}) => {
@@ -229,7 +287,8 @@ const addOrderToCard = (card, data) => {
         ? `<span class="order-payment-icon">${icon(iconMap[payment])}</span>`
         : '';
 
-    const itemsHtml = data.items.map(item => {
+    const doneSet = new Set(data.doneItems || []);
+    const itemsHtml = data.items.map((item, idx) => {
         let style = '';
         if (item.color) {
             const [r,g,b] = item.color;
@@ -238,7 +297,7 @@ const addOrderToCard = (card, data) => {
         }
 
         return `
-        <div class="feed-item" ${style}>
+        <div class="feed-item ${doneSet.has(idx) ? 'done' : ''}" data-item-idx="${idx}" ${style}>
             <div class="feed-item-name">
                 <span class="qty">${item.qty}×</span>
                 <span class="label-text">${item.label}</span>
@@ -260,6 +319,7 @@ const addOrderToCard = (card, data) => {
                 ${payIcon}
                 ${guestBadge}
             </div>
+            <button class="feed-icon-btn" data-action="print" aria-label="print">${icon('file-invoice')}</button>
         </div>
         <div class="feed-order-items">
             ${itemsHtml}
@@ -268,7 +328,34 @@ const addOrderToCard = (card, data) => {
     `;
 
     orderRegistry.set(data.orderId, { orderEl, card, data });
+    renderClaimBadge(orderEl, data.orderId);
     orderEl.querySelector('[data-action="done"]').onclick = () => beginCompletion(data.orderId);
+    const printBtn = orderEl.querySelector('[data-action="print"]');
+    if (printBtn) printBtn.onclick = (e) => {
+        e.stopPropagation();
+        const prices = buildPriceMap();
+        printReceipt({
+            tableId: data.tableId,
+            tableLabel: t('bartender.table_label', { table: data.tableId }),
+            timestamp: data.timestamp,
+            items: (data.items || []).map(it => ({ label: it.label, qty: it.qty, note: it.note, unitPrice: prices[it.id] || 0 }))
+        });
+    };
+
+    // Per-item "done" strike — progress only; does NOT finalize the order (that's the Done button + undo).
+    orderEl.querySelectorAll('.feed-item').forEach(el => {
+        el.addEventListener('click', () => {
+            claimOrder(data.orderId); // first interaction = "I'm making this"
+            const idx = Number(el.dataset.itemIdx);
+            data.doneItems = data.doneItems || [];
+            const at = data.doneItems.indexOf(idx);
+            const nowDone = at < 0;
+            if (nowDone) data.doneItems.push(idx); else data.doneItems.splice(at, 1);
+            el.classList.toggle('done', nowDone);
+            persistBarOrders();
+            broadcast({ type: 'item-done', orderId: data.orderId, itemIdx: idx, done: nowDone });
+        });
+    });
 
     // Swipe-to-complete
     let startX = 0;
@@ -346,6 +433,7 @@ const refreshCardVisual = (card) => {
 const beginCompletion = (orderId) => {
     const reg = orderRegistry.get(orderId);
     if (!reg || pendingCompletions.has(orderId)) return;
+    claimOrder(orderId);
     const { orderEl, card } = reg;
 
     orderEl.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
